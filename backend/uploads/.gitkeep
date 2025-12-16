@@ -1,0 +1,2 @@
+# This file keeps the uploads directory in Git
+# But ignores all files inside it

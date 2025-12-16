@@ -1,0 +1,118 @@
+package handlers
+
+import (
+	"checkmate-backend/models"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+)
+
+type AuthHandler struct {
+	DB *gorm.DB
+}
+
+func NewAuthHandler(db *gorm.DB) *AuthHandler {
+	return &AuthHandler{DB: db}
+}
+
+func (h *AuthHandler) Signup(c *gin.Context) {
+	var body struct {
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+	}
+
+	if c.BindJSON(&body) != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read body"})
+		return
+	}
+
+	// SECURITY: Prevent admin registration via signup
+	// Admins must be created manually in the database
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	if adminEmail != "" && body.Email == adminEmail {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Admin accounts cannot be registered through this endpoint"})
+		return
+	}
+
+	// Hash password
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	// Create user (always non-admin through signup)
+	user := models.User{
+		FirstName:    body.FirstName,
+		LastName:     body.LastName,
+		Email:        body.Email,
+		PasswordHash: string(hash),
+		IsAdmin:      false, // Always false for signup
+	}
+
+	result := h.DB.Create(&user)
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to create user (email might be taken)"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User created successfully"})
+}
+
+func (h *AuthHandler) Login(c *gin.Context) {
+	var body struct {
+		Email    string
+		Password string
+	}
+
+	if c.BindJSON(&body) != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read body"})
+		return
+	}
+
+	// Look up requested user
+	var user models.User
+	h.DB.First(&user, "email = ?", body.Email)
+
+	if user.ID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid email or password"})
+		return
+	}
+
+	// Compare pass
+	err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(body.Password))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid email or password"})
+		return
+	}
+
+	// Generate JWT
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":   user.ID,
+		"email": user.Email,
+		"admin": user.IsAdmin,
+		"exp":   time.Now().Add(time.Hour * 24 * 30).Unix(),
+	})
+
+	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token": tokenString,
+		"user": gin.H{
+			"id":       user.ID,
+			"email":    user.Email,
+			"is_admin": user.IsAdmin,
+		},
+	})
+}
