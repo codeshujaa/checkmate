@@ -9,7 +9,7 @@ const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }
 
     // Pricing data
     const pricing = {
-        1: 100,
+        1: 1,
         3: 250,
         5: 480
     };
@@ -18,7 +18,7 @@ const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }
 
     const handlePurchase = async () => {
         if (!/^254\d{9}$/.test(phoneNumber)) {
-            setError('Phone number must be in format: 254XXXXXXXXX');
+            setError('Enter valid 254XXXXXXXXX number');
             return;
         }
 
@@ -27,41 +27,42 @@ const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }
 
         try {
             const response = await payment.initiate(preSelectedSlots, phoneNumber);
-            const { invoice_id } = response.data;
+            const { checkout_request_id } = response.data;
 
-            alert('Check your phone for M-Pesa payment prompt!');
-
-            const pollInterval = setInterval(async () => {
-                try {
-                    const statusResp = await payment.checkStatus(invoice_id);
-
-                    if (statusResp.data.status === 'completed') {
-                        clearInterval(pollInterval);
-                        setIsProcessing(false);
-                        alert(`Success! ${statusResp.data.slots_added} slot(s) added to your account!`);
-                        onSuccess();
-                        onClose();
-                    } else if (statusResp.data.status === 'failed') {
-                        clearInterval(pollInterval);
-                        setIsProcessing(false);
-                        setError('Payment failed. Please try again.');
-                    }
-                } catch (err) {
-                    console.error('Status check error:', err);
-                }
-            }, 3000);
-
+            // Wait 5s before first poll (give M-Pesa time to process)
             setTimeout(() => {
-                clearInterval(pollInterval);
-                if (isProcessing) {
-                    setIsProcessing(false);
-                    setError('Payment timeout. Please check your transaction history.');
-                }
-            }, 120000);
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const statusResp = await payment.checkStatus(checkout_request_id);
+
+                        if (statusResp.data.status === 'completed') {
+                            clearInterval(pollInterval);
+                            setIsProcessing(false);
+                            onSuccess();
+                            onClose();
+                        } else if (statusResp.data.status === 'failed') {
+                            clearInterval(pollInterval);
+                            setIsProcessing(false);
+                            setError(statusResp.data.message || 'Transaction failed or insufficient funds');
+                        }
+                    } catch (err) {
+                        // Silent retry
+                    }
+                }, 8000); // Poll every 8s
+
+                // Timeout after 60s
+                setTimeout(() => {
+                    clearInterval(pollInterval);
+                    if (isProcessing) {
+                        setIsProcessing(false);
+                        setError('Connection timeout. Check M-Pesa for transaction status.');
+                    }
+                }, 60000);
+            }, 5000); // Initial 5s delay
 
         } catch (err) {
             setIsProcessing(false);
-            setError(err.response?.data?.error || 'Payment initiation failed');
+            setError('Failed to initiate. Check number.');
         }
     };
 

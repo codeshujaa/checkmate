@@ -33,12 +33,11 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		return
 	}
 
-	// SECURITY: Prevent admin registration via signup
-	// Admins must be created manually in the database
+	// Check if this is the defined admin email
 	adminEmail := os.Getenv("ADMIN_EMAIL")
+	isAdmin := false
 	if adminEmail != "" && body.Email == adminEmail {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin accounts cannot be registered through this endpoint"})
-		return
+		isAdmin = true // Auto-promote if matches .env
 	}
 
 	// Hash password
@@ -48,13 +47,13 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		return
 	}
 
-	// Create user (always non-admin through signup)
+	// Create user
 	user := models.User{
 		FirstName:    body.FirstName,
 		LastName:     body.LastName,
 		Email:        body.Email,
 		PasswordHash: string(hash),
-		IsAdmin:      false, // Always false for signup
+		IsAdmin:      isAdmin,
 	}
 
 	result := h.DB.Create(&user)

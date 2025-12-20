@@ -10,7 +10,7 @@ const Pricing = () => {
     const plans = [
         {
             name: '1 Slot',
-            price: '100',
+            price: '1',
             currency: 'KSH',
             slots: 1,
             features: [

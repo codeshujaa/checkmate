@@ -50,7 +50,8 @@ const Register = () => {
                 navigate('/dashboard');
             }
         } catch (err) {
-            setError('Registration failed. Email might be taken.');
+            const serverError = err.response?.data?.error || err.message || 'Registration failed';
+            setError(serverError);
             console.error('Registration error:', err);
         }
     };

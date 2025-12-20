@@ -55,6 +55,13 @@ func (h *OrderHandler) Upload(c *gin.Context) {
 		return
 	}
 
+	// Check file size (10MB limit)
+	const maxSize = 10 * 1024 * 1024 // 10MB
+	if file.Size > maxSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File too large"})
+		return
+	}
+
 	// Create a unique filename
 	timestamp := time.Now().Unix()
 	filename := fmt.Sprintf("%d_%d_%s", userIDUint, timestamp, file.Filename)

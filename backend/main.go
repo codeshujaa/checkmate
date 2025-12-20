@@ -39,14 +39,27 @@ func main() {
 	// Start background cleanup job (delete orders older than 5 hours)
 	handlers.StartCleanupJob(db, 5)
 
+	// AUTO-PROMOTE ADMIN (If defined in .env)
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	if adminEmail != "" {
+		var user models.User
+		if err := db.Where("email = ?", adminEmail).First(&user).Error; err == nil {
+			if !user.IsAdmin {
+				user.IsAdmin = true
+				db.Save(&user)
+				log.Println("Successfully promoted " + adminEmail + " to admin")
+			}
+		}
+	}
+
 	// Router
 	r := gin.Default()
 
 	// CORS
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:5174", "http://localhost:3000"}, // Adjust for production
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "http://63.176.147.96"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
 		ExposeHeaders:    []string{"Content-Length", "Content-Disposition"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,

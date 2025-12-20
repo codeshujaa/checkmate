@@ -1,7 +1,7 @@
-// PRODUCTION API URL - UPDATE THIS!
-const API_URL = process.env.NODE_ENV === 'production'
-    ? 'https://yourdomain.com/api'  // REPLACE with your actual domain
-    : 'http://localhost:8080';
+import axios from 'axios';
+
+// API URL from environment variable (set VITE_API_URL in .env)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 const api = axios.create({
     baseURL: API_URL,

@@ -74,16 +74,16 @@ const (
 )
 
 type Transaction struct {
-	ID              uint              `gorm:"primaryKey" json:"id"`
-	UserID          uint              `json:"user_id"`
-	Amount          float64           `json:"amount"`                              // KES amount
-	SlotsPurchased  int               `json:"slots_purchased"`                     // 1, 3, or 5
-	PhoneNumber     string            `json:"phone_number"`                        // 254XXXXXXXXX
-	IntaSendInvoice string            `gorm:"uniqueIndex" json:"intasend_invoice"` // Unique invoice ID
-	IntaSendRef     string            `json:"intasend_ref"`                        // API ref for tracking
-	Status          TransactionStatus `gorm:"default:'pending'" json:"status"`
-	CreatedAt       time.Time         `json:"created_at"`
-	UpdatedAt       time.Time         `json:"updated_at"`
+	ID                uint              `gorm:"primaryKey" json:"id"`
+	UserID            uint              `json:"user_id"`
+	Amount            float64           `json:"amount"`                                 // KES amount
+	SlotsPurchased    int               `json:"slots_purchased"`                        // 1, 3, or 5
+	PhoneNumber       string            `json:"phone_number"`                           // 254XXXXXXXXX
+	CheckoutRequestID string            `gorm:"uniqueIndex" json:"checkout_request_id"` // M-Pesa CheckoutRequestID
+	MerchantRequestID string            `json:"merchant_request_id"`                    // M-Pesa MerchantRequestID
+	Status            TransactionStatus `gorm:"default:'pending'" json:"status"`
+	CreatedAt         time.Time         `json:"created_at"`
+	UpdatedAt         time.Time         `json:"updated_at"`
 
 	User User `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }

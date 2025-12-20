@@ -26,7 +26,8 @@ const Login = () => {
                 navigate('/dashboard');
             }
         } catch (err) {
-            setError('Invalid email or password');
+            const serverError = err.response?.data?.error || err.message || 'Login failed';
+            setError(serverError);
             console.error('Login error:', err);
         }
     };
