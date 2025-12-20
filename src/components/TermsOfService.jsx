@@ -8,7 +8,7 @@ const TermsOfService = () => {
                 <div className="card">
                     <div className="card-text">
                         <h3>1. Introduction</h3>
-                        <p>Welcome to CheckMate. By accessing our website and using our services, you agree to be bound by these Terms of Service.</p>
+                        <p>Welcome to Checkmate Essays. By accessing our website and using our services, you agree to be bound by these Terms of Service.</p>
                         <br />
                         <h3>2. Use of Service</h3>
                         <p>Our service allows you to check your academic work for similarity and AI content. You agree to use this service for personal, educational purposes only.</p>

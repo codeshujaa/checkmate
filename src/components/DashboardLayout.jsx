@@ -6,7 +6,9 @@ import {
     User,
     Users,
     LogOut,
-    CheckSquare
+    CheckSquare,
+    Menu,
+    X
 } from 'lucide-react';
 
 const SidebarItem = ({ icon: Icon, label, to, active, onClick }) => (
@@ -22,47 +24,87 @@ const SidebarItem = ({ icon: Icon, label, to, active, onClick }) => (
 
 const DashboardLayout = () => {
     const location = useLocation();
-    const navigate = useNavigate(); // Hook for navigation
+    const navigate = useNavigate();
+    const [isSidebarOpen, setIsSidebarOpen] = React.useState(false); // Sidebar state
 
     const handleSignOut = (e) => {
         e.preventDefault();
-        // Clear tokens or state here if needed in the future
         navigate('/login');
     };
 
     return (
         <div className="dashboard-layout">
-            <aside className="sidebar">
+            {/* Mobile Sidebar Overlay */}
+            {isSidebarOpen && (
+                <div
+                    className="sidebar-overlay"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+            {/* Sidebar */}
+            <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">
                     <CheckSquare size={28} className="logo-icon" />
-                    <span className="logo-text">CheckMate</span>
+                    <span className="logo-text">Checkmate Essays</span>
+
+                    {/* Close Button (Mobile Only) */}
+                    <button
+                        className="mobile-close-btn"
+                        onClick={() => setIsSidebarOpen(false)}
+                        style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', display: 'none' }}
+                    >
+                        <X size={24} />
+                    </button>
                 </div>
 
                 <nav className="sidebar-nav">
+                    {/* Common / Conditional Dashboard Link */}
                     <SidebarItem
                         icon={LayoutDashboard}
                         label="Dashboard"
-                        to="/dashboard"
-                        active={location.pathname === '/dashboard'}
+                        to={location.pathname.includes('/admin') || JSON.parse(localStorage.getItem('user') || '{}').is_admin ? "/dashboard/admin" : "/dashboard"}
+                        active={location.pathname.includes('/dashboard')}
+                        onClick={() => setIsSidebarOpen(false)}
                     />
-                    <SidebarItem
-                        icon={CreditCard}
-                        label="Plans"
-                        to="/pricing"
-                        active={location.pathname === '/pricing'}
-                    />
-                    <SidebarItem
-                        icon={User}
-                        label="Account"
-                        to="/account"
-                        active={location.pathname === '/account'}
-                    />
-                    <SidebarItem
-                        icon={Users}
-                        label="Affiliate"
-                        to="/affiliate"
-                        active={location.pathname === '/affiliate'}
-                    />
+
+                    {/* Admin Specific Links */}
+                    {JSON.parse(localStorage.getItem('user') || '{}').is_admin && (
+                        <SidebarItem
+                            icon={Users}
+                            label="Users"
+                            to="/dashboard/admin/users"
+                            active={location.pathname === '/dashboard/admin/users'}
+                            onClick={() => setIsSidebarOpen(false)}
+                        />
+                    )}
+
+                    {/* User Specific Links (Hidden for Admin) */}
+                    {!JSON.parse(localStorage.getItem('user') || '{}').is_admin && (
+                        <>
+                            <SidebarItem
+                                icon={CreditCard}
+                                label="Plans"
+                                to="/pricing"
+                                active={location.pathname === '/pricing'}
+                                onClick={() => setIsSidebarOpen(false)}
+                            />
+                            <SidebarItem
+                                icon={User}
+                                label="Account"
+                                to="/account"
+                                active={location.pathname === '/account'}
+                                onClick={() => setIsSidebarOpen(false)}
+                            />
+                            <SidebarItem
+                                icon={Users}
+                                label="Affiliate"
+                                to="/affiliate"
+                                active={location.pathname === '/affiliate'}
+                                onClick={() => setIsSidebarOpen(false)}
+                            />
+                        </>
+                    )}
                 </nav>
 
                 <div className="sidebar-footer">
@@ -74,6 +116,17 @@ const DashboardLayout = () => {
             </aside>
 
             <main className="dashboard-content">
+                {/* Mobile Header with Menu Button */}
+                <div className="mobile-header">
+                    <button
+                        className="mobile-menu-btn"
+                        onClick={() => setIsSidebarOpen(true)}
+                    >
+                        <Menu size={24} />
+                    </button>
+                    <span className="mobile-logo-text">Checkmate Essays</span>
+                </div>
+
                 <Outlet />
             </main>
         </div>

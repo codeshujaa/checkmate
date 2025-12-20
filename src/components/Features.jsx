@@ -23,7 +23,7 @@ const Features = () => {
     return (
         <section className="section features" id="features">
             <div className="container">
-                <h2 className="section-title">Why Choose CheckMate?</h2>
+                <h2 className="section-title">Why Choose Checkmate Essays?</h2>
                 <div className="grid grid-2">
                     {features.map((feature, index) => (
                         <div key={index} className="card feature-card">

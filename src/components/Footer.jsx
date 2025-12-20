@@ -17,7 +17,7 @@ const Footer = () => {
                     <h5 className="footer-heading">Support</h5>
                     <ul className="footer-links">
                         <li><Link to="/help">Help Center</Link></li>
-                        <li><a href="mailto:hello@checkmate.io">Contact Us</a></li>
+                        <li><a href="mailto:hello@checkmateturnit.icu">Contact Us</a></li>
                         <li><Link to="/terms">Terms of Service</Link></li>
                         <li><Link to="/privacy">Privacy Policy</Link></li>
                     </ul>

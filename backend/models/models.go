@@ -16,6 +16,8 @@ type User struct {
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
+
+	Credits UserCredits `gorm:"foreignKey:UserID" json:"credits"`
 }
 
 type OrderStatus string

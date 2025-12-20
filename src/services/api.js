@@ -39,6 +39,7 @@ export const orders = {
 
 export const admin = {
     list: () => api.get('/admin/orders'),
+    listUsers: () => api.get('/admin/users'),
     complete: (id, formData) => api.post(`/admin/complete/${id}`, formData),
     setDailyLimit: (maxUploads) => api.put('/admin/daily-limit', { max_uploads: maxUploads }),
 };

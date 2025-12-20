@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"path/filepath"
 	"time"
 
 	"checkmate-backend/handlers"
@@ -57,7 +56,7 @@ func main() {
 
 	// CORS
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "http://63.176.147.96"},
+		AllowOrigins:     []string{"http://checkmateturnit.icu", "https://checkmateturnit.icu", "http://63.176.147.96"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
 		ExposeHeaders:    []string{"Content-Length", "Content-Disposition"},
@@ -88,43 +87,16 @@ func main() {
 		admin := authorized.Group("/admin")
 		admin.Use(middleware.RequireAdmin)
 		{
+			admin.GET("/users", authHandler.AdminListUsers)
 			admin.GET("/orders", orderHandler.AdminListOrders)
 			admin.POST("/complete/:id", orderHandler.AdminComplete)
 			admin.PUT("/daily-limit", dailyLimitHandler.SetDailyLimit)
 		}
 	}
 
-	// Background Cleaner (Goroutine)
-	go func() {
-		ticker := time.NewTicker(1 * time.Hour)
-		for range ticker.C {
-			cleanUploads("./uploads")
-		}
-	}()
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 	r.Run(":" + port)
-}
-
-func cleanUploads(dir string) {
-	files, err := os.ReadDir(dir)
-	if err != nil {
-		return
-	}
-
-	threshold := time.Now().Add(-5 * time.Hour)
-
-	for _, file := range files {
-		info, err := file.Info()
-		if err != nil {
-			continue
-		}
-
-		if info.ModTime().Before(threshold) {
-			os.Remove(filepath.Join(dir, file.Name()))
-		}
-	}
 }

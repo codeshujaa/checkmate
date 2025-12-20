@@ -103,10 +103,32 @@ const AdminDashboard = () => {
         const edit = edits[order.id];
         if (!edit) return;
 
+        // Validation: Check if all expected fields are present (Inputs OR Existing Pre-filled)
+        // Note: New files are in edit.report1/2. Existing files are not in edit state but expected to be done if saved.
+        // ACTUALLY, strict requirement: Must upload NEW reports or confirm existing?
+        // User asked: "when admin is upload the doc all the requierment must be filled the simelarity % and Ai % please the two pdfs"
+        // This implies for a NEW completion, these must be provided.
+
+        const aiScore = edit.ai_score !== undefined ? edit.ai_score : (order.ai_score || '');
+        const simScore = edit.sim_score !== undefined ? edit.sim_score : (order.sim_score || '');
+
+        if (!aiScore || !simScore) {
+            alert("Please enter both AI Score and Similarity Score.");
+            return;
+        }
+
+        if (!edit.report1 && !order.report1_path) {
+            alert("Please upload the Similarity Report (PDF 1).");
+            return;
+        }
+        if (!edit.report2 && !order.report2_path) {
+            alert("Please upload the AI Report (PDF 2).");
+            return;
+        }
+
+
         const formData = new FormData();
         // Use ?? for nullish coalescing to allow 0 values
-        const aiScore = edit.ai_score !== undefined ? edit.ai_score : (order.ai_score || 0);
-        const simScore = edit.sim_score !== undefined ? edit.sim_score : (order.sim_score || 0);
 
         formData.append('ai_score', aiScore);
         formData.append('sim_score', simScore);

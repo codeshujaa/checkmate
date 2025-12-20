@@ -84,7 +84,7 @@ const Pricing = () => {
 
             <div className="container">
                 <h2 className="section-title">Simple, Transparent Pricing</h2>
-                <div className="grid grid-4">
+                <div className="grid grid-3">
                     {plans.map((plan, index) => (
                         <div key={index} className={`card pricing-card ${plan.highlight ? 'highlight' : ''}`}>
                             {plan.offer && <div className="offer-badge">{plan.offer}</div>}

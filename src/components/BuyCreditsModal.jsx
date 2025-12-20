@@ -29,7 +29,7 @@ const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }
             const response = await payment.initiate(preSelectedSlots, phoneNumber);
             const { checkout_request_id } = response.data;
 
-            // Wait 5s before first poll (give M-Pesa time to process)
+            // Wait 2s before first poll (start checking sooner)
             setTimeout(() => {
                 const pollInterval = setInterval(async () => {
                     try {
@@ -48,7 +48,7 @@ const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }
                     } catch (err) {
                         // Silent retry
                     }
-                }, 8000); // Poll every 8s
+                }, 3000); // Poll every 3s (much faster feedback)
 
                 // Timeout after 60s
                 setTimeout(() => {
@@ -62,7 +62,8 @@ const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }
 
         } catch (err) {
             setIsProcessing(false);
-            setError('Failed to initiate. Check number.');
+            const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to initiate payment.';
+            setError(msg);
         }
     };
 

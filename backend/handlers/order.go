@@ -194,16 +194,21 @@ func (h *OrderHandler) Download(c *gin.Context) {
 
 	// SECURITY: Check if user owns a file with this name in their orders
 	baseName := filepath.Base(actualPath)
-	var count int64
-	h.DB.Model(&models.Order{}).Where(
-		"user_id = ? AND (local_file_path LIKE ? OR report1_path LIKE ? OR report2_path LIKE ?)",
-		userID, "%"+baseName, "%"+baseName, "%"+baseName,
-	).Count(&count)
 
-	if count == 0 {
-		fmt.Printf("Access denied: User %v attempted to download %s\n", userID, filename)
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
-		return
+	// Bypass check if user is admin
+	isAdmin, _ := c.Get("isAdmin")
+	if isAdmin != true {
+		var count int64
+		h.DB.Model(&models.Order{}).Where(
+			"user_id = ? AND (local_file_path LIKE ? OR report1_path LIKE ? OR report2_path LIKE ?)",
+			userID, "%"+baseName, "%"+baseName, "%"+baseName,
+		).Count(&count)
+
+		if count == 0 {
+			fmt.Printf("Access denied: User %v attempted to download %s\n", userID, filename)
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+			return
+		}
 	}
 
 	// Extract original filename from the stored filename

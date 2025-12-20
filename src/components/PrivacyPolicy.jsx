@@ -20,7 +20,7 @@ const PrivacyPolicy = () => {
                         <p>We use cookies to improve your experience on our site, such as keeping you logged in.</p>
                         <br />
                         <h3>5. Contact Us</h3>
-                        <p>If you have any questions about our privacy practices, please contact us at hello@checkmate.io.</p>
+                        <p>If you have any questions about our privacy practices, please contact us at hello@checkmateturnit.icu.</p>
                     </div>
                 </div>
             </div>

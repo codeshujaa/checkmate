@@ -115,3 +115,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		},
 	})
 }
+
+// AdminListUsers returns all users with their credits
+func (h *AuthHandler) AdminListUsers(c *gin.Context) {
+	var users []models.User
+	// Preload Credits to get slot info
+	if err := h.DB.Preload("Credits").Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		return
+	}
+	c.JSON(http.StatusOK, users)
+}

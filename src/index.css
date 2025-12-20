@@ -92,6 +92,7 @@ ul {
 /* Grid System */
 /* Mobile first: 1 column default */
 .grid-2,
+.grid-3,
 .grid-4 {
     grid-template-columns: 1fr;
 }
@@ -100,6 +101,7 @@ ul {
 @media (min-width: 576px) {
 
     .grid-2,
+    .grid-3,
     .grid-4 {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -109,6 +111,10 @@ ul {
 @media (min-width: 992px) {
     .grid-4 {
         grid-template-columns: repeat(4, 1fr);
+    }
+
+    .grid-3 {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
@@ -773,6 +779,7 @@ ul {
     .sidebar {
         transform: translateX(-100%);
         transition: transform 0.3s ease-in-out;
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
     }
 
     .sidebar.open {
@@ -782,5 +789,81 @@ ul {
     .dashboard-content {
         margin-left: 0;
         padding: 20px;
+        padding-top: 20px;
+    }
+
+    .mobile-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-color);
+    }
+
+    .mobile-menu-btn {
+        background: none;
+        border: none;
+        margin-right: 15px;
+        color: var(--text-primary);
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+    }
+
+    .mobile-logo-text {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--primary-color);
+    }
+
+    .mobile-close-btn {
+        display: block !important;
+        color: #64748b;
+    }
+
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 5;
+        backdrop-filter: blur(2px);
+    }
+
+    /* Table Responsive */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .custom-table {
+        min-width: 800px;
+        /* Force table to have width so it scrolls */
+    }
+
+    /* Adjust Dashboard Header direction for mobile */
+    .dashboard-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .dashboard-title-row .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Desktop Styles to Hide Mobile Elements */
+@media (min-width: 769px) {
+
+    .mobile-header,
+    .sidebar-overlay {
+        display: none;
     }
 }

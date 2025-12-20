@@ -35,7 +35,7 @@ const HelpCenter = () => {
                 <div className="card" style={{ marginTop: '40px', textAlign: 'center' }}>
                     <h3 className="card-title">Still have questions?</h3>
                     <p className="card-text">
-                        Our support team is here to help. <a href="mailto:hello@checkmate.io" style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>Contact Us</a>
+                        Our support team is here to help. <a href="mailto:hello@checkmateturnit.icu" style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>Contact Us</a>
                     </p>
                 </div>
             </div>
