@@ -1,16 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BuyCreditsModal from './BuyCreditsModal';
+import api, { dailyLimit } from '../services/api';
 
 const Pricing = () => {
     const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState(null);
+    const [systemLimitReached, setSystemLimitReached] = useState(false);
+
+    useEffect(() => {
+        const checkSystemLimit = async () => {
+            try {
+                const response = await dailyLimit.get();
+                if (response.data.remaining === 0) {
+                    setSystemLimitReached(true);
+                }
+            } catch (error) {
+                console.error("Failed to check system limit", error);
+            }
+        };
+        checkSystemLimit();
+    }, []);
 
     const plans = [
         {
             name: '1 Slot',
-            price: '1',
+            price: '100',
             currency: 'KSH',
             slots: 1,
             features: [
@@ -40,6 +56,7 @@ const Pricing = () => {
             price: '480',
             currency: 'KSH',
             slots: 5,
+            unavailable: true,
             features: [
                 '5 Document Checks',
                 'AI Detection',
@@ -99,10 +116,15 @@ const Pricing = () => {
                                 ))}
                             </ul>
                             <button
-                                onClick={() => handleChoosePlan(plan)}
+                                onClick={() => !plan.unavailable && handleChoosePlan(plan)}
+                                disabled={systemLimitReached || plan.unavailable}
                                 className={`btn ${plan.highlight ? 'btn-primary' : 'btn-outline'}`}
+                                style={{
+                                    opacity: (systemLimitReached || plan.unavailable) ? 0.5 : 1,
+                                    cursor: (systemLimitReached || plan.unavailable) ? 'not-allowed' : 'pointer'
+                                }}
                             >
-                                Choose Plan
+                                {plan.unavailable ? 'Unavailable' : (systemLimitReached ? 'Sold Out Today' : 'Choose Plan')}
                             </button>
                         </div>
                     ))}

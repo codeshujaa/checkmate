@@ -2,20 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { admin } from '../services/api';
 
-const DailyLimitModal = ({ isOpen, onClose, currentLimit }) => {
-    const [maxUploads, setMaxUploads] = useState(50);
+const DailyLimitModal = ({ isOpen, onClose, currentLimit, currentUsage = 0 }) => {
+    const [remainingSlots, setRemainingSlots] = useState(0);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (currentLimit !== null && currentLimit !== undefined) {
-            setMaxUploads(currentLimit);
+            // Initialize with REMAINING slots (Max - Used)
+            // This way, the user sees/edits what is actually available, not the total historical limit.
+            setRemainingSlots(Math.max(0, currentLimit - currentUsage));
         }
-    }, [currentLimit, isOpen]);
+    }, [currentLimit, currentUsage, isOpen]);
 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await admin.setDailyLimit(maxUploads);
+            // New Total Limit = Current Usage + Desired Remaining
+            const newTotalLimit = currentUsage + remainingSlots;
+            await admin.setDailyLimit(newTotalLimit);
             alert('Daily limit updated successfully!');
             onClose();
         } catch (error) {
@@ -68,13 +72,13 @@ const DailyLimitModal = ({ isOpen, onClose, currentLimit }) => {
 
                 <div style={{ marginBottom: '20px' }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>
-                        Maximum uploads per day
+                        Slots Allowed for Today (Remaining)
                     </label>
                     <input
                         type="number"
                         min="0"
-                        value={maxUploads}
-                        onChange={(e) => setMaxUploads(parseInt(e.target.value) || 0)}
+                        value={remainingSlots}
+                        onChange={(e) => setRemainingSlots(parseInt(e.target.value) || 0)}
                         style={{
                             width: '100%',
                             padding: '10px 12px',
@@ -86,6 +90,18 @@ const DailyLimitModal = ({ isOpen, onClose, currentLimit }) => {
                     <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
                         This limit will apply to all users for today.
                     </p>
+                    <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                            <span style={{ fontSize: '14px', color: '#4b5563' }}>Already Used:</span>
+                            <span style={{ fontSize: '14px', fontWeight: '600' }}>{currentUsage}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #d1d5db', paddingTop: '5px' }}>
+                            <span style={{ fontSize: '14px', color: '#1f2937', fontWeight: '500' }}>Total System Cap:</span>
+                            <span style={{ fontSize: '14px', fontWeight: '600', color: '#3b82f6' }}>
+                                {currentUsage + remainingSlots}
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>

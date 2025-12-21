@@ -107,6 +107,17 @@ const Dashboard = () => {
     };
 
     const handleUploadClick = () => {
+        if (userSlots === 0) {
+            const confirmBuy = window.confirm("You have 0 slots remaining. Would you like to buy more credits?");
+            if (confirmBuy) {
+                navigate('/pricing');
+            }
+            return;
+        }
+        if (slotsRemaining === 0) {
+            alert("System daily upload limit reached. Please try again tomorrow.");
+            return;
+        }
         if (fileInputRef.current) {
             fileInputRef.current.click();
         }
@@ -172,22 +183,25 @@ const Dashboard = () => {
                 </div>
                 <button
                     onClick={() => navigate('/pricing')}
+                    disabled={slotsRemaining === 0}
                     style={{
                         padding: '8px 16px',
-                        backgroundColor: '#10b981',
+                        backgroundColor: slotsRemaining === 0 ? '#9ca3af' : '#10b981',
                         color: 'white',
                         border: 'none',
                         borderRadius: '6px',
-                        cursor: 'pointer',
+                        cursor: slotsRemaining === 0 ? 'not-allowed' : 'pointer',
                         fontWeight: '500',
                         fontSize: '14px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px'
+                        gap: '6px',
+                        opacity: slotsRemaining === 0 ? 0.7 : 1
                     }}
+                    title={slotsRemaining === 0 ? "System daily limit reached" : "Buy more credits"}
                 >
                     <CreditCard size={16} />
-                    Buy Slots
+                    {slotsRemaining === 0 ? 'System Limit Reached' : 'Buy Slots'}
                 </button>
             </div>
 
@@ -217,21 +231,19 @@ const Dashboard = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h2 className="dashboard-title" style={{ margin: 0 }}>Document Upload</h2>
                 <button
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={handleUploadClick}
                     className="btn btn-primary"
-                    disabled={isUploading || slotsRemaining === 0 || userSlots === 0}
+                    disabled={isUploading}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        opacity: (isUploading || slotsRemaining === 0 || userSlots === 0) ? 0.5 : 1,
-                        cursor: (isUploading || slotsRemaining === 0 || userSlots === 0) ? 'not-allowed' : 'pointer'
+                        opacity: isUploading ? 0.5 : 1,
+                        cursor: isUploading ? 'not-allowed' : 'pointer'
                     }}
                 >
                     <UploadCloud size={20} />
-                    {isUploading ? 'Uploading...' :
-                        userSlots === 0 ? 'No Slots - Buy Credits' :
-                            slotsRemaining === 0 ? 'System Limit Reached' : 'Upload Document'}
+                    {isUploading ? 'Uploading...' : 'Upload Document'}
                 </button>
                 {/* Hidden File Input */}
                 <input

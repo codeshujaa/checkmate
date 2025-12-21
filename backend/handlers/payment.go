@@ -26,9 +26,9 @@ func NewPaymentHandler(db *gorm.DB) *PaymentHandler {
 
 // Pricing structure
 var pricingTiers = map[int]float64{
-	1: 1.00,   // 1 slot = 1 KES (TESTING)
-	3: 250.00, // 3 slots = 250 KES
-	5: 480.00, // 5 slots = 480 KES
+	1: 100.00,
+	3: 250.00,
+	5: 480.00,
 }
 
 // M-Pesa Configuration Helpers

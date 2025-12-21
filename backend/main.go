@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"checkmate-backend/handlers"
@@ -55,8 +56,13 @@ func main() {
 	r := gin.Default()
 
 	// CORS
+	origins := os.Getenv("ALLOWED_ORIGINS")
+	if origins == "" {
+		origins = "http://localhost:5173" // Default fallback
+	}
+
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://checkmateturnit.icu", "https://checkmateturnit.icu", "http://63.176.147.96"},
+		AllowOrigins:     strings.Split(origins, ","),
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
 		ExposeHeaders:    []string{"Content-Length", "Content-Disposition"},

@@ -8,6 +8,7 @@ const AdminDashboard = () => {
     const navigate = useNavigate();
     const [showLimitModal, setShowLimitModal] = useState(false);
     const [maxUploads, setMaxUploads] = useState(null);
+    const [currentUsage, setCurrentUsage] = useState(0);
 
     // Check authentication on mount
     useEffect(() => {
@@ -34,6 +35,7 @@ const AdminDashboard = () => {
         try {
             const response = await dailyLimit.get();
             setMaxUploads(response.data.max_uploads);
+            setCurrentUsage(response.data.current_uploads);
         } catch (error) {
             console.error("Failed to fetch daily limit", error);
         }
@@ -188,6 +190,7 @@ const AdminDashboard = () => {
                     fetchDailyLimit(); // Refresh limit after closing modal
                 }}
                 currentLimit={maxUploads}
+                currentUsage={currentUsage}
             />
 
             <div className="upload-card">

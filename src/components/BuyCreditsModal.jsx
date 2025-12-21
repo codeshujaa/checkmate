@@ -9,7 +9,7 @@ const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }
 
     // Pricing data
     const pricing = {
-        1: 1,
+        1: 100,
         3: 250,
         5: 480
     };
@@ -29,7 +29,7 @@ const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }
             const response = await payment.initiate(preSelectedSlots, phoneNumber);
             const { checkout_request_id } = response.data;
 
-            // Wait 2s before first poll (start checking sooner)
+            // Wait 5s before first poll (give M-Pesa time to process)
             setTimeout(() => {
                 const pollInterval = setInterval(async () => {
                     try {
@@ -48,7 +48,7 @@ const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }
                     } catch (err) {
                         // Silent retry
                     }
-                }, 3000); // Poll every 3s (much faster feedback)
+                }, 8000); // Poll every 8s 
 
                 // Timeout after 60s
                 setTimeout(() => {

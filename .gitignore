@@ -41,6 +41,13 @@ deploy/
 *.zip
 checkmate-deploy-*.zip
 checkmate-backend
+checkmate-backend-linux
+checkmate_backend_linux
+create_admin
+setup_admin
+*.db
+*.sqlite
+*.sqlite3
 
 # Go
 *.test

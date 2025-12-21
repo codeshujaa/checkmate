@@ -92,15 +92,15 @@ const DashboardLayout = () => {
                             <SidebarItem
                                 icon={User}
                                 label="Account"
-                                to="/account"
-                                active={location.pathname === '/account'}
+                                to="/dashboard/account"
+                                active={location.pathname === '/dashboard/account'}
                                 onClick={() => setIsSidebarOpen(false)}
                             />
                             <SidebarItem
                                 icon={Users}
                                 label="Affiliate"
-                                to="/affiliate"
-                                active={location.pathname === '/affiliate'}
+                                to="/dashboard/affiliate"
+                                active={location.pathname === '/dashboard/affiliate'}
                                 onClick={() => setIsSidebarOpen(false)}
                             />
                         </>

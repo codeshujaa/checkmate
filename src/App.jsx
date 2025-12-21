@@ -14,6 +14,8 @@ import DashboardLayout from './components/DashboardLayout';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/AdminDashboard';
 import AdminUsers from './components/AdminUsers';
+import Account from './components/Account';
+import Affiliate from './components/Affiliate';
 
 function App() {
     return (
@@ -84,7 +86,8 @@ function App() {
                         <Route index element={<Dashboard />} />
                         <Route path="admin" element={<AdminDashboard />} />
                         <Route path="admin/users" element={<AdminUsers />} />
-                        {/* Add other dashboard sub-routes here if needed */}
+                        <Route path="account" element={<Account />} />
+                        <Route path="affiliate" element={<Affiliate />} />
                     </Route>
 
                 </Routes>

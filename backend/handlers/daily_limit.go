@@ -28,7 +28,7 @@ func (h *DailyLimitHandler) GetDailyLimit(c *gin.Context) {
 	if result.Error == gorm.ErrRecordNotFound {
 		limit = models.DailyLimit{
 			Date:           today,
-			MaxUploads:     50, // Default limit
+			MaxUploads:     0, // Default limit
 			CurrentUploads: 0,
 		}
 		h.DB.Create(&limit)
@@ -38,7 +38,6 @@ func (h *DailyLimitHandler) GetDailyLimit(c *gin.Context) {
 	if remaining < 0 {
 		remaining = 0
 	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"max_uploads":     limit.MaxUploads,
 		"current_uploads": limit.CurrentUploads,
@@ -106,7 +105,7 @@ func IncrementUploadCount(db *gorm.DB) error {
 		// Create new record with default limit
 		limit = models.DailyLimit{
 			Date:           today,
-			MaxUploads:     50,
+			MaxUploads:     0, // Default to 0 to enforce admin setup
 			CurrentUploads: 1,
 		}
 		return db.Create(&limit).Error
@@ -124,7 +123,7 @@ func CheckUploadAllowed(db *gorm.DB) (bool, int) {
 	result := db.Where("date = ?", today).First(&limit)
 
 	if result.Error == gorm.ErrRecordNotFound {
-		return true, 50 // Default: allow uploads
+		return false, 0 // Default: block uploads until configured
 	}
 
 	remaining := limit.MaxUploads - limit.CurrentUploads
