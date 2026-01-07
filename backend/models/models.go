@@ -11,13 +11,29 @@ type User struct {
 	FirstName    string         `json:"first_name"`
 	LastName     string         `json:"last_name"`
 	Email        string         `gorm:"uniqueIndex" json:"email"`
-	PasswordHash string         `json:"-"` // Never send password back
+	PasswordHash string         `json:"-"`
 	IsAdmin      bool           `json:"is_admin"`
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
 
 	Credits UserCredits `gorm:"foreignKey:UserID" json:"credits"`
+}
+
+type VerificationCode struct {
+	ID        uint      `gorm:"primaryKey"`
+	Email     string    `gorm:"index"`
+	Code      string    `json:"code"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time
+}
+
+type PasswordResetToken struct {
+	ID        uint      `gorm:"primaryKey"`
+	Email     string    `gorm:"index"`
+	Token     string    `gorm:"uniqueIndex"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time
 }
 
 type OrderStatus string
@@ -31,10 +47,10 @@ const (
 type Order struct {
 	ID               uint        `gorm:"primaryKey" json:"id"`
 	UserID           uint        `json:"user_id"`
-	PaymentRef       string      `json:"payment_ref"` // IntaSend Reference
+	PaymentRef       string      `json:"payment_ref"`
 	Status           OrderStatus `gorm:"default:'Pending'" json:"status"`
 	OriginalFilename string      `json:"original_filename"`
-	LocalFilePath    string      `json:"local_file_path"` // File path on server
+	LocalFilePath    string      `json:"-"`
 
 	User User `gorm:"foreignKey:UserID" json:"user"`
 
@@ -49,11 +65,17 @@ type Order struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
-type DailyLimit struct {
+type PricingPackage struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
-	Date           string    `gorm:"uniqueIndex" json:"date"` // Format: YYYY-MM-DD
-	MaxUploads     int       `json:"max_uploads"`             // Admin-configured daily limit
-	CurrentUploads int       `json:"current_uploads"`         // Number of uploads today
+	Name           string    `json:"name"`
+	Price          float64   `json:"price"`
+	Currency       string    `json:"currency"` // Default KSH
+	Slots          int       `json:"slots"`
+	Features       string    `json:"features"` // JSON string array
+	Unavailable    bool      `json:"unavailable"`
+	Highlight      bool      `json:"highlight"`
+	Offer          string    `json:"offer"`           // e.g. "POPULAR"
+	AvailableSlots int       `json:"available_slots"` // Inventory: how many can be purchased
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
@@ -76,13 +98,14 @@ const (
 )
 
 type Transaction struct {
-	ID                uint              `gorm:"primaryKey" json:"id"`
-	UserID            uint              `json:"user_id"`
-	Amount            float64           `json:"amount"`                                 // KES amount
-	SlotsPurchased    int               `json:"slots_purchased"`                        // 1, 3, or 5
-	PhoneNumber       string            `json:"phone_number"`                           // 254XXXXXXXXX
-	CheckoutRequestID string            `gorm:"uniqueIndex" json:"checkout_request_id"` // M-Pesa CheckoutRequestID
-	MerchantRequestID string            `json:"merchant_request_id"`                    // M-Pesa MerchantRequestID
+	ID             uint    `gorm:"primaryKey" json:"id"`
+	UserID         uint    `json:"user_id"`
+	Amount         float64 `json:"amount"`
+	SlotsPurchased int     `json:"slots_purchased"`
+	PhoneNumber    string  `json:"phone_number"`
+
+	PaymentReference  string            `gorm:"uniqueIndex" json:"payment_reference"` // Paystack Reference
+	ProviderReference string            `json:"provider_reference"`                   // Paystack Internal ID (optional)
 	Status            TransactionStatus `gorm:"default:'pending'" json:"status"`
 	CreatedAt         time.Time         `json:"created_at"`
 	UpdatedAt         time.Time         `json:"updated_at"`

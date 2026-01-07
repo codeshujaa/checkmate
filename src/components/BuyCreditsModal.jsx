@@ -2,19 +2,14 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { payment } from '../services/api';
 
-const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }) => {
+const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedPackage = null }) => {
     const [phoneNumber, setPhoneNumber] = useState('254');
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState('');
 
-    // Pricing data
-    const pricing = {
-        1: 100,
-        3: 250,
-        5: 480
-    };
-
-    const selectedPrice = pricing[preSelectedSlots] || 0;
+    // Use dynamic pricing from the package object passed by parent
+    const selectedSlots = preSelectedPackage?.slots || 0;
+    const selectedPrice = preSelectedPackage?.price || 0;
 
     const handlePurchase = async () => {
         if (!/^254\d{9}$/.test(phoneNumber)) {
@@ -26,14 +21,14 @@ const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }
         setIsProcessing(true);
 
         try {
-            const response = await payment.initiate(preSelectedSlots, phoneNumber);
-            const { checkout_request_id } = response.data;
+            const response = await payment.initiate(selectedSlots, phoneNumber);
+            const { reference } = response.data;
 
             // Wait 5s before first poll (give M-Pesa time to process)
             setTimeout(() => {
                 const pollInterval = setInterval(async () => {
                     try {
-                        const statusResp = await payment.checkStatus(checkout_request_id);
+                        const statusResp = await payment.checkStatus(reference);
 
                         if (statusResp.data.status === 'completed') {
                             clearInterval(pollInterval);
@@ -118,7 +113,7 @@ const BuyCreditsModal = ({ isOpen, onClose, onSuccess, preSelectedSlots = null }
                         You selected:
                     </div>
                     <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>
-                        {preSelectedSlots} Slot{preSelectedSlots > 1 ? 's' : ''}
+                        {selectedSlots} Slot{selectedSlots > 1 ? 's' : ''}
                     </div>
                     <div style={{ fontSize: '18px', color: '#10b981', fontWeight: '600', marginTop: '4px' }}>
                         KSH {selectedPrice}

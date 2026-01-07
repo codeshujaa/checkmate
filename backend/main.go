@@ -28,12 +28,24 @@ func main() {
 	}
 
 	// Migrate
-	db.AutoMigrate(&models.User{}, &models.Order{}, &models.DailyLimit{}, &models.UserCredits{}, &models.Transaction{})
+	db.AutoMigrate(&models.User{}, &models.Order{}, &models.UserCredits{}, &models.Transaction{}, &models.VerificationCode{}, &models.PasswordResetToken{}, &models.PricingPackage{})
+
+	// Seed Packages
+	var count int64
+	db.Model(&models.PricingPackage{}).Count(&count)
+	if count == 0 {
+		packages := []models.PricingPackage{
+			{Name: "1 Slot", Price: 100, Currency: "KSH", Slots: 1, Features: `["1 Document Check","AI Detection","Plagiarism Scan","Instant Results"]`, Unavailable: false, Highlight: false},
+			{Name: "3 Slots", Price: 250, Currency: "KSH", Slots: 3, Features: `["3 Document Checks","AI Detection","Plagiarism Scan","Best Value"]`, Unavailable: false, Highlight: true, Offer: "POPULAR"},
+			{Name: "5 Slots", Price: 480, Currency: "KSH", Slots: 5, Features: `["5 Document Checks","AI Detection","Plagiarism Scan","Priority Support"]`, Unavailable: true, Highlight: false},
+		}
+		db.Create(&packages)
+	}
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(db)
+	pkgHandler := handlers.NewPackageHandler(db)
 	orderHandler := handlers.NewOrderHandler(db)
-	dailyLimitHandler := handlers.NewDailyLimitHandler(db)
 	paymentHandler := handlers.NewPaymentHandler(db)
 
 	// Start background cleanup job (delete orders older than 5 hours)
@@ -73,6 +85,11 @@ func main() {
 	// Routes
 	r.POST("/auth/signup", authHandler.Signup)
 	r.POST("/auth/login", authHandler.Login)
+	r.POST("/auth/otp", authHandler.SendOTP)
+	r.POST("/auth/google", authHandler.GoogleLogin)
+	r.POST("/auth/forgot-password", authHandler.ForgotPassword)
+	r.POST("/auth/reset-password", authHandler.ResetPassword)
+	r.GET("/packages", pkgHandler.ListPackages)
 
 	// Protected Routes
 	authorized := r.Group("/")
@@ -82,7 +99,6 @@ func main() {
 		authorized.GET("/user/orders", orderHandler.ListOrders)
 		authorized.DELETE("/user/orders/:id", orderHandler.DeleteOrder)
 		authorized.GET("/download/:filename", orderHandler.Download)
-		authorized.GET("/daily-limit", dailyLimitHandler.GetDailyLimit)
 
 		// Payment routes
 		authorized.POST("/payment/initiate", paymentHandler.InitiatePayment)
@@ -96,7 +112,14 @@ func main() {
 			admin.GET("/users", authHandler.AdminListUsers)
 			admin.GET("/orders", orderHandler.AdminListOrders)
 			admin.POST("/complete/:id", orderHandler.AdminComplete)
-			admin.PUT("/daily-limit", dailyLimitHandler.SetDailyLimit)
+			admin.GET("/transactions", paymentHandler.AdminListTransactions)
+			admin.POST("/transactions/:reference/verify", paymentHandler.AdminVerifyTransaction)
+
+			// Packages
+			admin.GET("/packages", pkgHandler.ListPackages)
+			admin.POST("/packages", pkgHandler.AdminCreatePackage)
+			admin.PUT("/packages/:id", pkgHandler.AdminUpdatePackage)
+			admin.DELETE("/packages/:id", pkgHandler.AdminDeletePackage)
 		}
 	}
 

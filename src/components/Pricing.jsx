@@ -1,81 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BuyCreditsModal from './BuyCreditsModal';
-import api, { dailyLimit } from '../services/api';
+import { packages } from '../services/api';
 
 const Pricing = () => {
     const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState(null);
-    const [systemLimitReached, setSystemLimitReached] = useState(false);
+
+
+    // Dynamic Plans State
+    const [plans, setPlans] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const checkSystemLimit = async () => {
+        const init = async () => {
             try {
-                const response = await dailyLimit.get();
-                if (response.data.remaining === 0) {
-                    setSystemLimitReached(true);
-                }
+
+                // Fetch Plans
+                const pkgRes = await packages.getAll();
+
+                // Defensive check: ensure data is an array
+                const pkgData = Array.isArray(pkgRes.data) ? pkgRes.data : [];
+
+                const formattedPlans = pkgData.map(p => {
+                    let features = [];
+                    try {
+                        features = JSON.parse(p.features);
+                    } catch (e) {
+                        features = [p.features];
+                    }
+                    return { ...p, features };
+                });
+                setPlans(formattedPlans);
+
             } catch (error) {
-                console.error("Failed to check system limit", error);
+                console.error("Failed to fetch pricing data", error);
+                console.error("Response data:", error.response?.data);
+            } finally {
+                setLoading(false);
             }
         };
-        checkSystemLimit();
+        init();
     }, []);
-
-    const plans = [
-        {
-            name: '1 Slot',
-            price: '100',
-            currency: 'KSH',
-            slots: 1,
-            features: [
-                '1 Document Check',
-                'AI Detection',
-                'Plagiarism Scan',
-                'Instant Results'
-            ],
-            highlight: false
-        },
-        {
-            name: '3 Slots',
-            price: '250',
-            currency: 'KSH',
-            slots: 3,
-            features: [
-                '3 Document Checks',
-                'AI Detection',
-                'Plagiarism Scan',
-                'Best Value'
-            ],
-            highlight: true,
-            offer: 'POPULAR'
-        },
-        {
-            name: '5 Slots',
-            price: '480',
-            currency: 'KSH',
-            slots: 5,
-            unavailable: true,
-            features: [
-                '5 Document Checks',
-                'AI Detection',
-                'Plagiarism Scan',
-                'Priority Support'
-            ],
-            highlight: false
-        }
-    ];
 
     const handleChoosePlan = (plan) => {
         const token = localStorage.getItem('token');
 
         if (!token) {
-            // Not logged in - redirect to register
             navigate('/register');
         } else {
-            // Logged in - open modal directly
-            setSelectedPlan(plan.slots);
+            setSelectedPlan(plan);
             setShowModal(true);
         }
     };
@@ -86,7 +61,6 @@ const Pricing = () => {
     };
 
     const handlePaymentSuccess = () => {
-        // After successful payment, redirect to dashboard
         navigate('/dashboard');
     };
 
@@ -96,39 +70,60 @@ const Pricing = () => {
                 isOpen={showModal}
                 onClose={handleModalClose}
                 onSuccess={handlePaymentSuccess}
-                preSelectedSlots={selectedPlan}
+                preSelectedPackage={selectedPlan}
             />
 
             <div className="container">
                 <h2 className="section-title">Simple, Transparent Pricing</h2>
-                <div className="grid grid-3">
-                    {plans.map((plan, index) => (
-                        <div key={index} className={`card pricing-card ${plan.highlight ? 'highlight' : ''}`}>
-                            {plan.offer && <div className="offer-badge">{plan.offer}</div>}
-                            <h3 className="card-title">{plan.name}</h3>
-                            <div className="price">
-                                <span className="currency">{plan.currency}</span>
-                                <span className="amount">{plan.price}</span>
-                            </div>
-                            <ul className="features-list">
-                                {plan.features.map((feature, i) => (
-                                    <li key={i}>{feature}</li>
-                                ))}
-                            </ul>
-                            <button
-                                onClick={() => !plan.unavailable && handleChoosePlan(plan)}
-                                disabled={systemLimitReached || plan.unavailable}
-                                className={`btn ${plan.highlight ? 'btn-primary' : 'btn-outline'}`}
-                                style={{
-                                    opacity: (systemLimitReached || plan.unavailable) ? 0.5 : 1,
-                                    cursor: (systemLimitReached || plan.unavailable) ? 'not-allowed' : 'pointer'
-                                }}
-                            >
-                                {plan.unavailable ? 'Unavailable' : (systemLimitReached ? 'Sold Out Today' : 'Choose Plan')}
-                            </button>
-                        </div>
-                    ))}
-                </div>
+
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: '40px' }}>Loading plans...</div>
+                ) : (
+                    <div className="grid grid-3">
+                        {plans.map((plan, index) => {
+                            const isSoldOut = plan.available_slots <= 0;
+                            const isDisabled = plan.unavailable || isSoldOut;
+
+                            return (
+                                <div key={index} className={`card pricing-card ${plan.highlight ? 'highlight' : ''}`}>
+                                    {plan.offer && <div className="offer-badge">{plan.offer}</div>}
+                                    {isSoldOut && <div className="offer-badge" style={{ background: '#ef4444' }}>SOLD OUT</div>}
+                                    <h3 className="card-title">{plan.name}</h3>
+                                    <div className="price">
+                                        <span className="currency">{plan.currency}</span>
+                                        <span className="amount">{plan.price}</span>
+                                    </div>
+                                    {!isSoldOut && plan.available_slots > 0 && (
+                                        <div style={{
+                                            fontSize: '0.85rem',
+                                            color: plan.available_slots <= 3 ? '#ef4444' : '#10b981',
+                                            fontWeight: '600',
+                                            marginBottom: '10px'
+                                        }}>
+                                            {plan.available_slots} slot{plan.available_slots > 1 ? 's' : ''} remaining
+                                        </div>
+                                    )}
+                                    <ul className="features-list">
+                                        {plan.features.map((feature, i) => (
+                                            <li key={i}>{feature}</li>
+                                        ))}
+                                    </ul>
+                                    <button
+                                        onClick={() => !isDisabled && handleChoosePlan(plan)}
+                                        disabled={isDisabled}
+                                        className={`btn ${plan.highlight ? 'btn-primary' : 'btn-outline'}`}
+                                        style={{
+                                            opacity: isDisabled ? 0.5 : 1,
+                                            cursor: isDisabled ? 'not-allowed' : 'pointer'
+                                        }}
+                                    >
+                                        {plan.unavailable ? 'Unavailable' : (isSoldOut ? 'Sold Out' : 'Choose Plan')}
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </section>
     );

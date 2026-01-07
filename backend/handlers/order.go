@@ -27,16 +27,6 @@ func (h *OrderHandler) Upload(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	userIDUint := uint(userID.(float64))
 
-	// Check 1: Daily upload limit (system-wide)
-	allowed, dailyRemaining := CheckUploadAllowed(h.DB)
-	if !allowed {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error":   "Daily system upload limit reached",
-			"message": "The daily upload quota has been exhausted. Please try again tomorrow.",
-		})
-		return
-	}
-
 	// Check 2: User slots (personal credits)
 	hasSlots, userSlots := CheckUserSlots(h.DB, userIDUint)
 	if !hasSlots {
@@ -85,13 +75,12 @@ func (h *OrderHandler) Upload(c *gin.Context) {
 	h.DB.Create(&order)
 
 	// Decrement counters
-	IncrementUploadCount(h.DB)
+
 	DecrementUserSlots(h.DB, userIDUint)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":         "File uploaded successfully",
 		"order":           order,
-		"daily_remaining": dailyRemaining - 1,
 		"slots_remaining": userSlots - 1,
 	})
 }

@@ -1,13 +1,11 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { UploadCloud, FileText, AlertCircle, ShoppingCart, Download, Trash2, CreditCard } from 'lucide-react';
-import api, { orders, dailyLimit, userCredits } from '../services/api';
+import api, { orders, userCredits } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
     const [files, setFiles] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
-    const [slotsRemaining, setSlotsRemaining] = useState(null);
-    const [maxUploads, setMaxUploads] = useState(null);
     const [userSlots, setUserSlots] = useState(null);
     const fileInputRef = useRef(null);
     const navigate = useNavigate();
@@ -29,16 +27,6 @@ const Dashboard = () => {
         }
     };
 
-    const fetchDailyLimit = async () => {
-        try {
-            const response = await dailyLimit.get();
-            setSlotsRemaining(response.data.remaining);
-            setMaxUploads(response.data.max_uploads);
-        } catch (error) {
-            console.error("Failed to fetch daily limit", error);
-        }
-    };
-
     const fetchUserCredits = async () => {
         try {
             const response = await userCredits.get();
@@ -51,12 +39,10 @@ const Dashboard = () => {
     // Poll for updates every 5 seconds
     useEffect(() => {
         fetchOrders();
-        fetchDailyLimit();
         fetchUserCredits();
 
         const interval = setInterval(() => {
             fetchOrders();
-            fetchDailyLimit();
             fetchUserCredits();
         }, 5000);
 
@@ -112,10 +98,6 @@ const Dashboard = () => {
             if (confirmBuy) {
                 navigate('/pricing');
             }
-            return;
-        }
-        if (slotsRemaining === 0) {
-            alert("System daily upload limit reached. Please try again tomorrow.");
             return;
         }
         if (fileInputRef.current) {
@@ -183,49 +165,27 @@ const Dashboard = () => {
                 </div>
                 <button
                     onClick={() => navigate('/pricing')}
-                    disabled={slotsRemaining === 0}
                     style={{
                         padding: '8px 16px',
-                        backgroundColor: slotsRemaining === 0 ? '#9ca3af' : '#10b981',
+                        backgroundColor: '#10b981',
                         color: 'white',
                         border: 'none',
                         borderRadius: '6px',
-                        cursor: slotsRemaining === 0 ? 'not-allowed' : 'pointer',
+                        cursor: 'pointer',
                         fontWeight: '500',
                         fontSize: '14px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
-                        opacity: slotsRemaining === 0 ? 0.7 : 1
+                        gap: '6px'
                     }}
-                    title={slotsRemaining === 0 ? "System daily limit reached" : "Buy more credits"}
+                    title="Buy more credits"
                 >
                     <CreditCard size={16} />
-                    {slotsRemaining === 0 ? 'System Limit Reached' : 'Buy Slots'}
+                    Buy Slots
                 </button>
             </div>
 
-            {/* System Daily Slots Banner */}
-            <div style={{
-                backgroundColor: '#dbeafe',
-                border: '1px solid #93c5fd',
-                borderRadius: '8px',
-                padding: '16px 20px',
-                marginBottom: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start'
-            }}>
-                <div style={{
-                    color: '#1e40af',
-                    fontWeight: '600',
-                    fontSize: '16px'
-                }}>
-                    {slotsRemaining !== null
-                        ? `${slotsRemaining} system slot${slotsRemaining !== 1 ? 's' : ''} remaining today`
-                        : 'Loading...'}
-                </div>
-            </div>
+
 
             {/* Header with Title and Upload Button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>

@@ -2,7 +2,7 @@
 # Checkmate Project .gitignore
 # ===========================================
 
-# Environment Variables (CRITICAL - Contains secrets!)
+# Environment Variables 
 .env
 .env.local
 .env.production
@@ -42,7 +42,10 @@ deploy/
 checkmate-deploy-*.zip
 checkmate-backend
 checkmate-backend-linux
+checkmate_backend-linux
+checkmate-backend-test
 checkmate_backend_linux
+checkmate.db
 create_admin
 setup_admin
 *.db

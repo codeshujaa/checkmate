@@ -3,13 +3,11 @@ package handlers
 import (
 	"bytes"
 	"checkmate-backend/models"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"regexp"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,58 +22,56 @@ func NewPaymentHandler(db *gorm.DB) *PaymentHandler {
 	return &PaymentHandler{DB: db}
 }
 
-// Pricing structure
-var pricingTiers = map[int]float64{
-	1: 100.00,
-	3: 250.00,
-	5: 480.00,
-}
+// Paystack API Constants
+const (
+	PaystackBaseURL = "https://api.paystack.co"
+)
 
-// M-Pesa Configuration Helpers
-func getMpesaURL(endpoint string) string {
-	env := os.Getenv("MPESA_ENV")
-	baseURL := "https://sandbox.safaricom.co.ke"
-	if env == "production" {
-		baseURL = "https://api.safaricom.co.ke"
+// Helper: Make Authenticated Request to Paystack
+func makePaystackRequest(method, endpoint string, payload interface{}) ([]byte, error) {
+	apiKey := os.Getenv("PAYSTACK_SECRET_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("PAYSTACK_SECRET_KEY is not set")
 	}
-	return baseURL + endpoint
-}
 
-func getMpesaAccessToken() (string, error) {
-	consumerKey := os.Getenv("MPESA_CONSUMER_KEY")
-	consumerSecret := os.Getenv("MPESA_CONSUMER_SECRET")
+	var body io.Reader
+	if payload != nil {
+		jsonBytes, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		body = bytes.NewBuffer(jsonBytes)
+	}
 
-	url := getMpesaURL("/oauth/v1/generate?grant_type=client_credentials")
+	req, err := http.NewRequest(method, PaystackBaseURL+endpoint, body)
+	if err != nil {
+		return nil, err
+	}
 
-	req, _ := http.NewRequest("GET", url, nil)
-	req.SetBasicAuth(consumerKey, consumerSecret)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("auth failed: %s", string(body))
-	}
-
-	var res map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&res)
-	return res["access_token"].(string), nil
+	return io.ReadAll(resp.Body)
 }
 
-func getPassword(shortcode, passkey, timestamp string) string {
-	data := shortcode + passkey + timestamp
-	return base64.StdEncoding.EncodeToString([]byte(data))
-}
-
-// InitiatePayment handles M-Pesa STK Push request
+// InitiatePayment - Uses Paystack Charge API for Mobile Money
 func (h *PaymentHandler) InitiatePayment(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userIDVal, _ := c.Get("userID")
+	userID := uint(userIDVal.(float64))
+
+	// Get User Email for Paystack
+	var user models.User
+	if err := h.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
+		return
+	}
 
 	var body struct {
 		Slots       int    `json:"slots"`
@@ -87,284 +83,208 @@ func (h *PaymentHandler) InitiatePayment(c *gin.Context) {
 		return
 	}
 
-	// Validate slots
-	amount, exists := pricingTiers[body.Slots]
-	if !exists {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid slots. Choose 1, 3, or 5"})
+	// Fetch pricing from database instead of hardcoded map
+	var pkg models.PricingPackage
+	if err := h.DB.Where("slots = ? AND unavailable = ?", body.Slots, false).First(&pkg).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or unavailable package. Please select a valid plan."})
 		return
 	}
 
-	// Validate phone number (254XXXXXXXXX format)
-	phoneRegex := regexp.MustCompile(`^254\d{9}$`)
-	if !phoneRegex.MatchString(body.PhoneNumber) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid phone number. Format: 254XXXXXXXXX"})
+	// Check inventory availability
+	if pkg.AvailableSlots <= 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "Sold out. No slots available for this package."})
 		return
 	}
 
-	// Get Auth Token
-	token, err := getMpesaAccessToken()
+	amount := pkg.Price
+
+	// Paystack expects amount in kobo/cents (Integer)
+	amountKobo := int(amount * 100)
+
+	// Paystack M-Pesa format trial: +254...
+	phone := body.PhoneNumber
+	if len(phone) == 12 && phone[:3] == "254" {
+		phone = "+" + phone
+	} else if len(phone) == 10 && (phone[:2] == "07" || phone[:2] == "01") {
+		phone = "+254" + phone[2:]
+	}
+
+	// Prepare Charge Request
+	chargeReq := map[string]interface{}{
+		"email":    user.Email,
+		"amount":   amountKobo,
+		"currency": "KES",
+		"mobile_money": map[string]string{
+			"phone":    phone,
+			"provider": "mpesa",
+		},
+		"metadata": map[string]interface{}{
+			"user_id": userID,
+			"slots":   body.Slots,
+		},
+	}
+
+	respBody, err := makePaystackRequest("POST", "/charge", chargeReq)
 	if err != nil {
-		fmt.Printf("M-Pesa Auth Error: %v\n", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to connect to M-Pesa"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to connect to Payment Gateway"})
 		return
 	}
 
-	// Prepare STK Push
-	shortcode := os.Getenv("MPESA_SHORTCODE")
-	passkey := os.Getenv("MPESA_PASSKEY")
-	timestamp := time.Now().Format("20060102150405")
-	password := getPassword(shortcode, passkey, timestamp)
-	callbackURL := os.Getenv("MPESA_CALLBACK_URL")
-	// Note: Callback URL is required by API but we will rely on polling/query for this simple version
-	// if using localhost, callback won't work anyway without ngrok.
-	if callbackURL == "" {
-		callbackURL = "https://example.com/callback" // Dummy for localhost testing
-	}
-
-	stkReq := map[string]interface{}{
-		"BusinessShortCode": shortcode,
-		"Password":          password,
-		"Timestamp":         timestamp,
-		"TransactionType":   "CustomerPayBillOnline",
-		"Amount":            uint(amount), // Safaricom expects integer for Amount usually, but let's check. Documentation says NO decimal.
-		"PartyA":            body.PhoneNumber,
-		"PartyB":            shortcode,
-		"PhoneNumber":       body.PhoneNumber,
-		"CallBackURL":       callbackURL,
-		"AccountReference":  "Checkmate",
-		"TransactionDesc":   fmt.Sprintf("Buy %d Slots", body.Slots),
-	}
-
-	jsonData, _ := json.Marshal(stkReq)
-	req, _ := http.NewRequest("POST", getMpesaURL("/mpesa/stkpush/v1/processrequest"), bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "STK Push failed"})
-		return
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-
-	// Log response for debugging
-	fmt.Printf("STK Response: %s\n", string(respBody))
-
-	var mpesaResp map[string]interface{}
-	json.Unmarshal(respBody, &mpesaResp)
-
-	// Check for ResponseCode "0"
-	if mpesaResp["ResponseCode"] != "0" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "M-Pesa rejected request", "details": mpesaResp["CustomerMessage"]})
+	var chargeResp map[string]interface{}
+	if err := json.Unmarshal(respBody, &chargeResp); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid response from Payment Gateway"})
 		return
 	}
 
-	checkoutRequestID := mpesaResp["CheckoutRequestID"].(string)
-	merchantRequestID := mpesaResp["MerchantRequestID"].(string)
+	status, _ := chargeResp["status"].(bool)
+	if !status {
+		msg, _ := chargeResp["message"].(string)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Payment init failed", "details": msg})
+		return
+	}
 
-	// Create transaction record
+	data, _ := chargeResp["data"].(map[string]interface{})
+	reference, _ := data["reference"].(string)
+
+	// Create Pending Transaction in DB
 	transaction := models.Transaction{
-		UserID:            uint(userID.(float64)),
-		Amount:            amount,
-		SlotsPurchased:    body.Slots,
-		PhoneNumber:       body.PhoneNumber,
-		CheckoutRequestID: checkoutRequestID,
-		MerchantRequestID: merchantRequestID,
-		Status:            models.TransactionPending,
+		UserID:           userID,
+		Amount:           amount,
+		SlotsPurchased:   body.Slots,
+		PhoneNumber:      body.PhoneNumber,
+		PaymentReference: reference,
+		Status:           models.TransactionPending,
 	}
 
 	if err := h.DB.Create(&transaction).Error; err != nil {
-		fmt.Printf("DB Error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save transaction"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":             "Enter M-Pesa PIN",
-		"checkout_request_id": checkoutRequestID,
-		"amount":              amount,
-		"slots":               body.Slots,
+		"message":   "M-Pesa prompt sent to your phone",
+		"reference": reference,
+		"status":    "pending",
 	})
 }
 
-// CheckPaymentStatus - Poll endpoint to check if payment completed via Query API
+// CheckPaymentStatus - Verify transaction with Paystack (Server-Side Logic Only)
 func (h *PaymentHandler) CheckPaymentStatus(c *gin.Context) {
-	checkoutRequestID := c.Param("invoice_id")
+	reference := c.Param("invoice_id") // We'll use this param for reference
 	userIDVal, _ := c.Get("userID")
 	userID := uint(userIDVal.(float64))
 
+	// 1. Fetch Local Transaction
 	var transaction models.Transaction
-	// Find transaction by M-Pesa CheckoutRequestID
-	if err := h.DB.Where("checkout_request_id = ?", checkoutRequestID).First(&transaction).Error; err != nil {
+	if err := h.DB.Where("payment_reference = ?", reference).First(&transaction).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Transaction not found"})
 		return
 	}
 
-	// Verify ownership
 	if transaction.UserID != userID {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Transaction not found"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized access to transaction"})
 		return
 	}
 
-	// If already completed, return immediately
+	// 2. Idempotency Check (If already completed, do nothing)
 	if transaction.Status == models.TransactionCompleted {
 		c.JSON(http.StatusOK, gin.H{
-			"status":         "completed",
-			"slots_added":    transaction.SlotsPurchased,
-			"transaction_id": transaction.ID,
+			"status":      "completed",
+			"slots_added": transaction.SlotsPurchased,
 		})
 		return
 	}
 
-	// Query M-Pesa API for status
-	token, err := getMpesaAccessToken()
+	// 3. Verify with Paystack
+	respBody, err := makePaystackRequest("GET", "/transaction/verify/"+reference, nil)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"status": "pending"}) // Keep pending on auth error
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Could not verify payment"})
 		return
 	}
 
-	shortcode := os.Getenv("MPESA_SHORTCODE")
-	passkey := os.Getenv("MPESA_PASSKEY")
-	timestamp := time.Now().Format("20060102150405")
-	password := getPassword(shortcode, passkey, timestamp)
+	var verifyResp map[string]interface{}
+	json.Unmarshal(respBody, &verifyResp)
 
-	queryReq := map[string]interface{}{
-		"BusinessShortCode": shortcode,
-		"Password":          password,
-		"Timestamp":         timestamp,
-		"CheckoutRequestID": checkoutRequestID,
-	}
+	status, _ := verifyResp["status"].(bool)
+	data, _ := verifyResp["data"].(map[string]interface{})
+	gatewayStatus, _ := data["status"].(string)
 
-	jsonData, _ := json.Marshal(queryReq)
-	req, _ := http.NewRequest("POST", getMpesaURL("/mpesa/stkpushquery/v1/query"), bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"status": "pending"})
-		return
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-	respString := string(respBody)
-	fmt.Printf("RAW MPESA BODY: %s\n", respString)
-
-	// Check for HTML response (Incapsula/WAF block)
-	if len(respString) > 0 && respString[0] == '<' {
-		fmt.Printf("M-Pesa API Error (HTML/Incapsula): %s\n", respString)
-		c.JSON(http.StatusOK, gin.H{"status": "failed", "message": "Transaction Failed"})
+	if !status {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "failed", "message": "Verification failed at gateway"})
 		return
 	}
 
-	var queryResp map[string]interface{}
-	if err := json.Unmarshal(respBody, &queryResp); err != nil {
-		fmt.Printf("JSON Parse Error: %v\n", err)
-		// If we can't parse JSON, we should probably fail rather than hang pending forever
-		c.JSON(http.StatusOK, gin.H{"status": "failed", "message": "Invalid response from Payment Gateway"})
-		return
-	}
+	// 4. Handle Status
+	if gatewayStatus == "success" {
+		// SECURITY: ATOMIC TRANSACTION
+		// We use a transaction to ensure we update the order AND give credits together.
+		err := h.DB.Transaction(func(tx *gorm.DB) error {
+			// Lock the row to prevent race conditions
+			var t models.Transaction
+			if err := tx.Where("id = ?", transaction.ID).First(&t).Error; err != nil {
+				return err
+			}
 
-	// specific check for error message from API gateway
-	if errorCode, ok := queryResp["errorCode"].(string); ok {
-		fmt.Printf("API gateway error: %s\n", errorCode)
-		c.JSON(http.StatusOK, gin.H{"status": "failed", "message": "Transaction Failed"})
-		return
-	}
+			// Double-check status inside lock
+			if t.Status == models.TransactionCompleted {
+				return nil // Already done
+			}
 
-	// Check for "fault" (Rate Limit / Spike Arrest)
-	if _, ok := queryResp["fault"]; ok {
-		fmt.Printf("M-Pesa Rate Limit (Spike Arrest): %v\n", queryResp["fault"])
-		c.JSON(http.StatusOK, gin.H{"status": "pending"}) // Retry next poll
-		return
-	}
+			// Update Transaction Status
+			t.Status = models.TransactionCompleted
+			if err := tx.Save(&t).Error; err != nil {
+				return err
+			}
 
-	// Robust ResultCode Extraction
-	var resultCode string
-	var found bool
-	if rcStr, ok := queryResp["ResultCode"].(string); ok {
-		resultCode = rcStr
-		found = true
-	} else if rcFloat, ok := queryResp["ResultCode"].(float64); ok {
-		resultCode = fmt.Sprintf("%.0f", rcFloat)
-		found = true
-	}
+			// Decrement package inventory (first-come-first-served)
+			var pkg models.PricingPackage
+			if err := tx.Where("slots = ?", t.SlotsPurchased).First(&pkg).Error; err == nil {
+				if pkg.AvailableSlots > 0 {
+					pkg.AvailableSlots--
+					tx.Save(&pkg)
+				}
+			}
 
-	if !found {
-		// Robust ResponseCode Extraction for "In Process" check
-		var responseCode string
-		if rcStr, ok := queryResp["ResponseCode"].(string); ok {
-			responseCode = rcStr
-		} else if rcFloat, ok := queryResp["ResponseCode"].(float64); ok {
-			responseCode = fmt.Sprintf("%.0f", rcFloat)
-		}
+			// Give Credits
+			var userCredits models.UserCredits
+			result := tx.Where("user_id = ?", t.UserID).First(&userCredits)
 
-		// If ResponseCode is 0, it means the request is accepted and being processed
-		if responseCode == "0" {
-			c.JSON(http.StatusOK, gin.H{"status": "pending"})
+			if result.Error == gorm.ErrRecordNotFound {
+				userCredits = models.UserCredits{
+					UserID:         t.UserID,
+					SlotsRemaining: t.SlotsPurchased,
+					TotalPurchased: t.SlotsPurchased,
+				}
+				if err := tx.Create(&userCredits).Error; err != nil {
+					return err
+				}
+			} else {
+				userCredits.SlotsRemaining += t.SlotsPurchased
+				userCredits.TotalPurchased += t.SlotsPurchased
+				if err := tx.Save(&userCredits).Error; err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction processing failed"})
 			return
 		}
 
-		// Fallback: If we don't understand the response, fail it to stop loop
-		fmt.Printf("DEBUG: Unknown Response format: %v\n", queryResp)
-		c.JSON(http.StatusOK, gin.H{"status": "failed"})
-		return
-	}
-
-	fmt.Printf("DEBUG: Extracted ResultCode: '%s'\n", resultCode)
-
-	if resultCode == "0" {
-		// SUCCESS
-		transaction.Status = models.TransactionCompleted
-		h.DB.Save(&transaction)
-
-		// Add slots
-		var userCredits models.UserCredits
-		result := h.DB.Where("user_id = ?", userID).First(&userCredits)
-
-		if result.Error == gorm.ErrRecordNotFound {
-			userCredits = models.UserCredits{
-				UserID:         userID,
-				SlotsRemaining: transaction.SlotsPurchased,
-				TotalPurchased: transaction.SlotsPurchased,
-			}
-			h.DB.Create(&userCredits)
-		} else {
-			userCredits.SlotsRemaining += transaction.SlotsPurchased
-			userCredits.TotalPurchased += transaction.SlotsPurchased
-			h.DB.Save(&userCredits)
-		}
-
 		c.JSON(http.StatusOK, gin.H{
-			"status":         "completed",
-			"slots_added":    transaction.SlotsPurchased,
-			"transaction_id": transaction.ID,
+			"status":      "completed",
+			"slots_added": transaction.SlotsPurchased,
 		})
-		return
-	} else if resultCode == "1037" {
-		// 1037: DS timeout / No response from user yet. keep pending.
-		c.JSON(http.StatusOK, gin.H{"status": "pending"})
-		return
-	} else {
-		// FAILURE
+
+	} else if gatewayStatus == "failed" || gatewayStatus == "reversed" {
 		transaction.Status = models.TransactionFailed
 		h.DB.Save(&transaction)
-
-		// Determine user-friendly message
-		msg := "Transaction failed"
-		if resultCode == "1032" {
-			msg = "Transaction cancelled"
-		} else if desc, ok := queryResp["ResultDesc"].(string); ok && desc != "" {
-			// Use M-Pesa's description (e.g., "The balance is insufficient...")
-			msg = desc
-		}
-		c.JSON(http.StatusOK, gin.H{"status": "failed", "message": msg})
-		return
+		c.JSON(http.StatusOK, gin.H{"status": "failed"})
+	} else {
+		c.JSON(http.StatusOK, gin.H{"status": "pending"})
 	}
 }
 
@@ -376,7 +296,6 @@ func (h *PaymentHandler) GetUserCredits(c *gin.Context) {
 	result := h.DB.Where("user_id = ?", userID).First(&userCredits)
 
 	if result.Error == gorm.ErrRecordNotFound {
-		// No credits yet, return 0
 		c.JSON(http.StatusOK, gin.H{
 			"slots_remaining": 0,
 			"total_purchased": 0,
@@ -413,4 +332,112 @@ func CheckUserSlots(db *gorm.DB, userID uint) (bool, int) {
 	}
 
 	return userCredits.SlotsRemaining > 0, userCredits.SlotsRemaining
+}
+
+// AdminListTransactions returns recent transactions (Admin only)
+func (h *PaymentHandler) AdminListTransactions(c *gin.Context) {
+	var transactions []models.Transaction
+	// Limit to last 50 to keep polling light
+	if err := h.DB.Preload("User").Order("created_at desc").Limit(50).Find(&transactions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch transactions"})
+		return
+	}
+	c.JSON(http.StatusOK, transactions)
+}
+
+// AdminVerifyTransaction - Allows admin to manually verify a pending transaction
+func (h *PaymentHandler) AdminVerifyTransaction(c *gin.Context) {
+	reference := c.Param("reference")
+
+	// 1. Fetch Local Transaction
+	var transaction models.Transaction
+	if err := h.DB.Where("payment_reference = ?", reference).First(&transaction).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Transaction not found"})
+		return
+	}
+
+	// 2. Idempotency Check
+	if transaction.Status == models.TransactionCompleted {
+		c.JSON(http.StatusOK, gin.H{"status": "completed", "message": "Transaction already completed"})
+		return
+	}
+
+	// 3. Verify with Paystack
+	respBody, err := makePaystackRequest("GET", "/transaction/verify/"+reference, nil)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Could not verify payment with gateway"})
+		return
+	}
+
+	var verifyResp map[string]interface{}
+	json.Unmarshal(respBody, &verifyResp)
+
+	status, _ := verifyResp["status"].(bool)
+	data, _ := verifyResp["data"].(map[string]interface{})
+	gatewayStatus, _ := data["status"].(string)
+
+	if !status {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "failed", "message": "Verification failed at gateway"})
+		return
+	}
+
+	// 4. Handle Status
+	if gatewayStatus == "success" {
+		err := h.DB.Transaction(func(tx *gorm.DB) error {
+			var t models.Transaction
+			if err := tx.Where("id = ?", transaction.ID).First(&t).Error; err != nil {
+				return err
+			}
+			if t.Status == models.TransactionCompleted {
+				return nil
+			}
+
+			t.Status = models.TransactionCompleted
+			if err := tx.Save(&t).Error; err != nil {
+				return err
+			}
+
+			var pkg models.PricingPackage
+			if err := tx.Where("slots = ?", t.SlotsPurchased).First(&pkg).Error; err == nil {
+				if pkg.AvailableSlots > 0 {
+					pkg.AvailableSlots--
+					tx.Save(&pkg)
+				}
+			}
+
+			var userCredits models.UserCredits
+			result := tx.Where("user_id = ?", t.UserID).First(&userCredits)
+			if result.Error == gorm.ErrRecordNotFound {
+				userCredits = models.UserCredits{
+					UserID:         t.UserID,
+					SlotsRemaining: t.SlotsPurchased,
+					TotalPurchased: t.SlotsPurchased,
+				}
+				if err := tx.Create(&userCredits).Error; err != nil {
+					return err
+				}
+			} else {
+				userCredits.SlotsRemaining += t.SlotsPurchased
+				userCredits.TotalPurchased += t.SlotsPurchased
+				if err := tx.Save(&userCredits).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction processing failed"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "completed", "message": "Transaction verified and completed"})
+
+	} else if gatewayStatus == "failed" || gatewayStatus == "reversed" {
+		transaction.Status = models.TransactionFailed
+		h.DB.Save(&transaction)
+		c.JSON(http.StatusOK, gin.H{"status": "failed"})
+	} else {
+		c.JSON(http.StatusOK, gin.H{"status": "pending", "message": "Transaction is still pending at gateway"})
+	}
 }

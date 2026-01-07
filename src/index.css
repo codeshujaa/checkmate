@@ -326,57 +326,92 @@ ul {
     color: var(--primary-color);
 }
 
-/* Auth Pages */
+/* Auth Pages - Clean Design */
 .auth-container {
-    min-height: calc(100vh - 80px - 300px);
+    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 40px 20px;
-    background-color: var(--background-color);
+    background-color: #f8fafc;
 }
 
 .auth-card {
-    background: white;
-    padding: 40px;
-    border-radius: 8px;
-    box-shadow: var(--shadow-md);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    padding: 48px 40px;
+    border-radius: 24px;
+    box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
     width: 100%;
-    max-width: 400px;
+    max-width: 440px;
+    position: relative;
+    z-index: 1;
+    animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .auth-title {
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-bottom: 30px;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
     color: var(--text-primary);
+    text-align: center;
+    letter-spacing: -0.5px;
+}
+
+.auth-subtitle {
+    text-align: center;
+    color: var(--text-color);
+    margin-bottom: 32px;
+    font-size: 0.95rem;
 }
 
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
 .form-group label {
     display: block;
     margin-bottom: 8px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-primary);
-    font-size: 0.95rem;
+    font-size: 0.875rem;
+    letter-spacing: 0.025em;
 }
 
 .form-control {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
+    padding: 14px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
     font-size: 1rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: all 0.3s ease;
+    background-color: #f8fafc;
+    color: var(--text-primary);
 }
 
 .form-control:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
+    background-color: #fff;
+    box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.15);
+}
+
+.form-control::placeholder {
+    color: #94a3b8;
 }
 
 .label-row {
@@ -393,7 +428,12 @@ ul {
 .forgot-password {
     font-size: 0.85rem;
     color: var(--primary-color);
-    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.forgot-password:hover {
+    color: var(--primary-hover);
 }
 
 .checkbox-group {
@@ -403,44 +443,168 @@ ul {
 }
 
 .checkbox-group input {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     accent-color: var(--primary-color);
+    border-radius: 4px;
 }
 
 .checkbox-group label {
     margin-bottom: 0;
     font-weight: 400;
+    color: var(--text-color);
 }
 
 .btn-block {
     width: 100%;
-    padding: 12px;
+    padding: 14px 24px;
     font-size: 1rem;
-    margin-top: 10px;
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
+    font-weight: 600;
+    margin-top: 8px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(13, 148, 136, 0.4);
 }
 
 .btn-block:hover {
-    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(13, 148, 136, 0.5);
+}
+
+.btn-block:active {
+    transform: translateY(0);
+}
+
+.btn-block:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-secondary {
+    background: #f1f5f9;
+    color: var(--text-color);
+    border: 2px solid var(--border-color);
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    background: var(--border-color);
+    border-color: #cbd5e1;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px;
+    transition: color 0.2s;
+}
+
+.btn-link:hover {
+    color: var(--primary-hover);
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    margin: 28px 0;
+    color: #94a3b8;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border-color), transparent);
+}
+
+.auth-divider span {
+    padding: 0 16px;
 }
 
 .auth-footer {
-    margin-top: 20px;
+    margin-top: 28px;
     text-align: center;
-    font-size: 0.9rem;
+    font-size: 0.925rem;
     color: var(--text-color);
 }
 
 .auth-footer a {
     color: var(--primary-color);
-    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.auth-footer a:hover {
+    color: var(--primary-hover);
+}
+
+.error-message,
+.alert-danger {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #dc2626;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 20px;
+    text-align: center;
+    border: 1px solid #fca5a5;
 }
 
 .mt-3 {
     margin-top: 1rem;
 }
+
+.mt-4 {
+    margin-top: 1.5rem;
+}
+
+.my-3 {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Row layout for names */
+.row {
+    display: flex;
+    gap: 16px;
+}
+
+.row .form-group {
+    flex: 1;
+}
+
+@media (max-width: 480px) {
+    .row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .auth-card {
+        padding: 32px 24px;
+        border-radius: 20px;
+    }
+
+    .auth-title {
+        font-size: 1.75rem;
+    }
+}
+
 
 /* Footer */
 .footer {
@@ -529,6 +693,8 @@ ul {
     display: flex;
     min-height: 100vh;
     background-color: #f3f4f6;
+    position: relative;
+    /* For overlay context */
 }
 
 /* Sidebar */
@@ -542,7 +708,9 @@ ul {
     height: 100vh;
     left: 0;
     top: 0;
-    z-index: 10;
+    z-index: 50;
+    /* Higher Z-index for mobile overlay */
+    transition: transform 0.3s ease-in-out;
 }
 
 .sidebar-header {
@@ -551,6 +719,7 @@ ul {
     align-items: center;
     padding: 0 24px;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .logo-icon {
@@ -567,6 +736,8 @@ ul {
 .sidebar-nav {
     padding: 24px 0;
     flex: 1;
+    overflow-y: auto;
+    /* Enable scrolling for nav items */
 }
 
 .sidebar-item {
@@ -592,7 +763,6 @@ ul {
 
 .sidebar-item.active {
     background-color: #e6fffa;
-    /* Light teal background */
     color: var(--primary-color);
     border-right: 3px solid var(--primary-color);
 }
@@ -604,11 +774,14 @@ ul {
 .sidebar-footer {
     padding: 24px;
     border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+    /* Prevent footer from shrinking */
+    background: #fff;
+    /* Ensure bg covers nav content if scrolling */
 }
 
 .sign-out-btn {
     color: #ef4444;
-    /* Red color for sign out */
 }
 
 .sign-out-btn:hover {
@@ -620,13 +793,58 @@ ul {
 .dashboard-content {
     flex: 1;
     margin-left: 250px;
-    /* Width of sidebar */
     padding: 40px;
+    transition: margin-left 0.3s ease-in-out;
 }
 
 .dashboard-container {
-    max-width: 95%;
-    margin: 0 auto;
+    max-width: 100%;
+}
+
+.mobile-header {
+    display: none;
+    /* Hidden on desktop */
+    align-items: center;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    /* background: white;  Optional: card look */
+    /* padding: 15px; */
+    /* border-radius: 8px; */
+}
+
+.mobile-menu-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    margin-right: 12px;
+    color: var(--text-primary);
+}
+
+.mobile-logo-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+    display: none;
+    /* JS toggles via logic, but CSS can help */
+}
+
+/* Responsive Dashboard & Tables */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    margin-bottom: 1rem;
 }
 
 /* Warning Banner */
@@ -676,7 +894,7 @@ ul {
     /* Amber 900 */
 }
 
-/* Upload Section */
+/* Upload Section & Cards */
 .dashboard-title {
     font-size: 1.75rem;
     color: var(--text-primary);
@@ -774,76 +992,71 @@ ul {
     font-size: 0.9rem;
 }
 
-/* Responsiveness for Dashboard */
+/* Media Queries (Mobile) */
 @media (max-width: 768px) {
     .sidebar {
         transform: translateX(-100%);
-        transition: transform 0.3s ease-in-out;
-        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+        /* Hide sidebar by default */
+        width: 280px;
+        /* Slightly wider drawer */
     }
 
     .sidebar.open {
         transform: translateX(0);
+        /* Show sidebar */
     }
 
     .dashboard-content {
         margin-left: 0;
+        /* Remove margin */
         padding: 20px;
-        padding-top: 20px;
     }
 
     .mobile-header {
         display: flex;
-        align-items: center;
+        /* Show mobile header */
         margin-bottom: 20px;
-        background: white;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: var(--shadow-sm);
-        border: 1px solid var(--border-color);
-    }
-
-    .mobile-menu-btn {
-        background: none;
-        border: none;
-        margin-right: 15px;
-        color: var(--text-primary);
-        cursor: pointer;
-        padding: 0;
-        display: flex;
-    }
-
-    .mobile-logo-text {
-        font-weight: 700;
-        font-size: 1.1rem;
-        color: var(--primary-color);
     }
 
     .mobile-close-btn {
         display: block !important;
-        color: #64748b;
+        /* Ensure override */
     }
 
     .sidebar-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 5;
-        backdrop-filter: blur(2px);
+        display: block;
+        /* If rendered by React, this helps styling */
     }
 
-    /* Table Responsive */
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+    /* Adjust Tables */
+    .table th,
+    .table td {
+        white-space: nowrap;
+        /* Prevent wrapping in cells, force scroll */
+        padding: 12px 16px !important;
+        /* Smaller padding on mobile */
+        font-size: 0.85rem !important;
     }
 
-    .custom-table {
-        min-width: 800px;
-        /* Force table to have width so it scrolls */
+    .status-badge {
+        font-size: 0.75rem !important;
+    }
+
+    /* Auth Pages Responsive */
+    .auth-container {
+        padding: 20px 16px;
+    }
+
+    .auth-card {
+        padding: 32px 20px;
+    }
+
+    .auth-title {
+        font-size: 1.5rem;
+    }
+
+    .btn-block {
+        padding: 12px 20px;
     }
 
     /* Adjust Dashboard Header direction for mobile */

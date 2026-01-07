@@ -47,7 +47,7 @@ func RequireAuth(c *gin.Context) {
 		// Attach user info to context
 		c.Set("userID", claims["sub"])
 		c.Set("isAdmin", claims["admin"])
-		
+
 		c.Next()
 	} else {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
@@ -55,10 +55,10 @@ func RequireAuth(c *gin.Context) {
 }
 
 func RequireAdmin(c *gin.Context) {
-    isAdmin, exists := c.Get("isAdmin")
-    if !exists || isAdmin != true {
-        c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
-        return
-    }
-    c.Next()
+	isAdmin, exists := c.Get("isAdmin")
+	if !exists || isAdmin != true {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin access required. Please re-login if you were recently promoted."})
+		return
+	}
+	c.Next()
 }
