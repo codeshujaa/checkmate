@@ -300,9 +300,10 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	// Check if user exists (silently proceed if not found for security)
+	// Check if user exists (silently proceed if not found for security, but log it)
 	var user models.User
 	if err := h.DB.Where("email = ?", body.Email).First(&user).Error; err != nil {
+		fmt.Printf("DEBUG: User not found for email: %s\n", body.Email)
 		c.JSON(http.StatusOK, gin.H{"message": "Reset link sent"})
 		return
 	}
@@ -335,18 +336,31 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	host := os.Getenv("SMTP_HOST")
 	port := os.Getenv("SMTP_PORT")
 
-	if from != "" {
-		msg := "From: " + from + "\n" +
-			"To: " + body.Email + "\n" +
-			"Subject: Password Reset Request\n\n" +
-			"Click link to reset password:\n\n" +
-			link + "\n\n" +
-			"Link expires in 1 hour."
-
-		auth := smtp.PlainAuth("", from, password, host)
-		go smtp.SendMail(host+":"+port, auth, from, []string{body.Email}, []byte(msg))
+	if from == "" || password == "" {
+		fmt.Println("DEBUG: SMTP Credentials MISSING in .env")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Server Config Error: SMTP Missing"})
+		return
 	}
 
+	msg := "From: " + from + "\n" +
+		"To: " + body.Email + "\n" +
+		"Subject: Password Reset Request\n\n" +
+		"Click link to reset password:\n\n" +
+		link + "\n\n" +
+		"Link expires in 1 hour."
+
+	auth := smtp.PlainAuth("", from, password, host)
+
+	fmt.Printf("DEBUG: Attempting to send email to %s via %s:%s\n", body.Email, host, port)
+
+	err := smtp.SendMail(host+":"+port, auth, from, []string{body.Email}, []byte(msg))
+	if err != nil {
+		fmt.Println("SMTP Error:", err) // Print to server logs
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email: " + err.Error()})
+		return
+	}
+
+	fmt.Println("DEBUG: Email sent successfully!")
 	c.JSON(http.StatusOK, gin.H{"message": "Reset link sent"})
 }
 

@@ -57,8 +57,8 @@ type Order struct {
 	// Admin Added Fields
 	AIScore     int    `json:"ai_score"`
 	SimScore    int    `json:"sim_score"`
-	Report1Path string `json:"report1_path"` // Path to PDF 1
-	Report2Path string `json:"report2_path"` // Path to PDF 2
+	Report1Path string `json:"report1_path"`
+	Report2Path string `json:"report2_path"`
 
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
