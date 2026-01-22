@@ -254,9 +254,23 @@ const Dashboard = () => {
                                         <td style={{ padding: '12px' }}>{formatScore(file.status, file.sim_score)}</td>
                                         <td style={{ padding: '12px' }}>{formatScore(file.status, file.ai_score)}</td>
                                         <td style={{ padding: '12px' }}>
-                                            <span className={`status-badge status-${file.status?.toLowerCase() || 'pending'}`}>
-                                                {file.status || 'Pending'}
-                                            </span>
+                                            {file.status === 'Pending' || !file.status ? (
+                                                <div className="queue-position">
+                                                    <span className="status-badge status-pending">
+                                                        <span className="processing-spinner"></span>
+                                                        Queue {file.queue_position || '...'}
+                                                    </span>
+                                                </div>
+                                            ) : file.status === 'Processing' ? (
+                                                <span className="status-badge status-processing">
+                                                    <span className="processing-spinner"></span>
+                                                    Processing...
+                                                </span>
+                                            ) : (
+                                                <span className="status-badge status-completed">
+                                                    ✓ Completed
+                                                </span>
+                                            )}
                                         </td>
                                         <td style={{ padding: '12px' }}>
                                             {file.status === 'Completed' ? (

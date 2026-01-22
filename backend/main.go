@@ -112,6 +112,7 @@ func main() {
 			admin.GET("/users", authHandler.AdminListUsers)
 			admin.GET("/orders", orderHandler.AdminListOrders)
 			admin.POST("/complete/:id", orderHandler.AdminComplete)
+			admin.POST("/processing/:id", orderHandler.AdminStartProcessing)
 			admin.GET("/transactions", paymentHandler.AdminListTransactions)
 			admin.POST("/transactions/:reference/verify", paymentHandler.AdminVerifyTransaction)
 

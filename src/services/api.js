@@ -48,6 +48,7 @@ export const admin = {
     listUsers: () => api.get('/admin/users'),
     transactions: () => api.get('/admin/transactions'),
     complete: (id, formData) => api.post(`/admin/complete/${id}`, formData),
+    startProcessing: (id) => api.post(`/admin/processing/${id}`),
     verifyTransaction: (reference) => api.post(`/admin/transactions/${reference}/verify`),
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, CheckCircle, Save, Download, FileText } from 'lucide-react';
+import { Upload, CheckCircle, Save, Download, FileText, Play } from 'lucide-react';
 import api, { admin } from '../services/api';
 
 const AdminOrders = () => {
@@ -87,6 +87,16 @@ const AdminOrders = () => {
         } catch (error) {
             console.error("Failed to complete order", error);
             alert("Failed to save order");
+        }
+    };
+
+    const handleStartProcessing = async (orderId) => {
+        try {
+            await admin.startProcessing(orderId);
+            fetchOrders(); // Refresh to show updated status
+        } catch (error) {
+            console.error("Failed to start processing", error);
+            alert("Failed to start processing");
         }
     };
 
@@ -203,7 +213,26 @@ const AdminOrders = () => {
 
                                             {/* Actions */}
                                             <td style={{ padding: '20px 24px', verticalAlign: 'middle', textAlign: 'right' }}>
-                                                {isDraft ? (
+                                                {order.status === 'Pending' ? (
+                                                    <button
+                                                        className="btn"
+                                                        style={{
+                                                            padding: '6px 12px',
+                                                            fontSize: '0.85rem',
+                                                            display: 'inline-flex',
+                                                            gap: '6px',
+                                                            alignItems: 'center',
+                                                            borderRadius: '6px',
+                                                            backgroundColor: '#dbeafe',
+                                                            color: '#2563eb',
+                                                            border: '1px solid #93c5fd'
+                                                        }}
+                                                        onClick={() => handleStartProcessing(order.id)}
+                                                    >
+                                                        <Play size={14} />
+                                                        Start Processing
+                                                    </button>
+                                                ) : isDraft ? (
                                                     <button
                                                         className="btn btn-primary"
                                                         style={{ padding: '6px 12px', fontSize: '0.85rem', display: 'inline-flex', gap: '6px', alignItems: 'center', borderRadius: '6px' }}
@@ -212,6 +241,8 @@ const AdminOrders = () => {
                                                         <Save size={14} />
                                                         Save
                                                     </button>
+                                                ) : order.status === 'Completed' ? (
+                                                    <span style={{ color: '#10b981', fontWeight: '500' }}>✓ Done</span>
                                                 ) : (
                                                     <span style={{ color: '#cbd5e1' }}>-</span>
                                                 )}

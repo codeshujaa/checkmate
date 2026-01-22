@@ -992,6 +992,67 @@ ul {
     font-size: 0.9rem;
 }
 
+/* Queue Position Indicator Styles */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.processing-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e2e8f0;
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-badge.status-pending {
+    background-color: #fef3c7;
+    color: #d97706;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.status-badge.status-processing {
+    background-color: #dbeafe;
+    color: #2563eb;
+}
+
+.status-badge.status-completed {
+    background-color: #d1fae5;
+    color: #059669;
+}
+
+.queue-position {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.queue-number {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
 /* Media Queries (Mobile) */
 @media (max-width: 768px) {
     .sidebar {

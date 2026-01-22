@@ -85,12 +85,37 @@ func (h *OrderHandler) Upload(c *gin.Context) {
 	})
 }
 
-// ListOrders returns orders for the logged in user
+// ListOrders returns orders for the logged in user with queue position for pending orders
 func (h *OrderHandler) ListOrders(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	var orders []models.Order
 	h.DB.Where("user_id = ?", userID).Order("created_at desc").Find(&orders)
-	c.JSON(http.StatusOK, orders)
+
+	// Get all pending orders globally to calculate queue position
+	var pendingOrders []models.Order
+	h.DB.Where("status = ?", models.StatusPending).Order("created_at asc").Find(&pendingOrders)
+
+	// Create a map of order ID to queue position
+	queuePositions := make(map[uint]int)
+	for i, order := range pendingOrders {
+		queuePositions[order.ID] = i + 1 // 1-indexed position
+	}
+
+	// Build response with queue positions
+	type OrderWithQueue struct {
+		models.Order
+		QueuePosition int `json:"queue_position"`
+	}
+
+	response := make([]OrderWithQueue, len(orders))
+	for i, order := range orders {
+		response[i] = OrderWithQueue{
+			Order:         order,
+			QueuePosition: queuePositions[order.ID], // 0 if not pending
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // AdminListOrders returns all orders (Admin only)
@@ -149,6 +174,26 @@ func (h *OrderHandler) AdminComplete(c *gin.Context) {
 
 	h.DB.Save(&order)
 	c.JSON(http.StatusOK, gin.H{"message": "Order completed", "order": order})
+}
+
+// AdminStartProcessing marks an order as being processed
+func (h *OrderHandler) AdminStartProcessing(c *gin.Context) {
+	id := c.Param("id")
+
+	var order models.Order
+	if err := h.DB.First(&order, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	if order.Status != models.StatusPending {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Order is not pending"})
+		return
+	}
+
+	order.Status = models.StatusProcessing
+	h.DB.Save(&order)
+	c.JSON(http.StatusOK, gin.H{"message": "Order marked as processing", "order": order})
 }
 
 func (h *OrderHandler) Download(c *gin.Context) {
