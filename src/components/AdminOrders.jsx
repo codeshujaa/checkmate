@@ -107,7 +107,8 @@ const AdminOrders = () => {
                 <h2 className="dashboard-title" style={{ margin: 0 }}>Document Orders</h2>
             </div>
 
-            <div className="card" style={{ overflow: 'hidden', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
+            {/* Desktop Table View */}
+            <div className="card admin-orders-table" style={{ overflow: 'hidden', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
                 <div className="table-responsive">
                     <table className="table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
                         <thead style={{ background: '#f8fafc' }}>
@@ -242,7 +243,7 @@ const AdminOrders = () => {
                                                         Save
                                                     </button>
                                                 ) : order.status === 'Completed' ? (
-                                                    <span style={{ color: '#10b981', fontWeight: '500' }}>✓ Done</span>
+                                                    <span style={{ color: '#10b981', fontWeight: '500' }}>Done</span>
                                                 ) : (
                                                     <span style={{ color: '#cbd5e1' }}>-</span>
                                                 )}
@@ -254,6 +255,96 @@ const AdminOrders = () => {
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="mobile-order-cards">
+                {orders.length === 0 ? (
+                    <div className="card" style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>No orders found</div>
+                ) : (
+                    orders.map((order) => {
+                        const edit = edits[order.id] || {};
+                        const isDraft = edit.ai_score || edit.sim_score || edit.report1 || edit.report2;
+                        const userName = order.user?.first_name && order.user?.last_name
+                            ? `${order.user.first_name} ${order.user.last_name}`
+                            : order.user?.email || `User ${order.user_id}`;
+
+                        return (
+                            <div key={order.id} className="order-card">
+                                <div className="order-card-header">
+                                    <div className="order-card-info">
+                                        <h3>#{order.id} - {userName}</h3>
+                                        <div className="filename">{order.original_filename}</div>
+                                    </div>
+                                    <div className="order-card-status">
+                                        <span className={`status-badge status-${order.status?.toLowerCase()}`} style={{ fontSize: '0.75rem', padding: '4px 8px' }}>
+                                            {order.status === 'Pending' ? 'Waiting' : order.status}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Completed orders show scores */}
+                                {order.status === 'Completed' && (
+                                    <>
+                                        <div className="order-card-scores">
+                                            <span>Similarity: {order.sim_score}%</span>
+                                            <span>AI: {order.ai_score}%</span>
+                                        </div>
+                                        <div className="order-card-done">Done</div>
+                                    </>
+                                )}
+
+                                {/* Pending orders show Start button */}
+                                {order.status === 'Pending' && (
+                                    <div className="order-card-actions">
+                                        <button className="btn btn-outline" onClick={() => handleDownload(order.original_filename)}>
+                                            <Download size={16} /> Download
+                                        </button>
+                                        <button className="btn btn-primary" onClick={() => handleStartProcessing(order.id)}>
+                                            <Play size={16} /> Start
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Processing orders show upload form */}
+                                {order.status === 'Processing' && (
+                                    <>
+                                        <div className="order-card-actions">
+                                            <button className="btn btn-outline" onClick={() => handleDownload(order.original_filename)}>
+                                                <Download size={16} /> Download
+                                            </button>
+                                        </div>
+                                        <div className="order-card-form">
+                                            <div className="order-card-form-row">
+                                                <label>Similarity</label>
+                                                <label className="btn btn-outline upload-btn" style={{ cursor: 'pointer' }}>
+                                                    <Upload size={14} /> Upload
+                                                    <input type="file" style={{ display: 'none' }} accept=".pdf" onChange={(e) => handleEditChange(order.id, 'report1', e.target.files[0])} />
+                                                </label>
+                                                {edit.report1 && <CheckCircle size={16} className="uploaded-check" />}
+                                                <input type="number" placeholder="%" value={edit.sim_score !== undefined ? edit.sim_score : order.sim_score || ''} onChange={(e) => handleEditChange(order.id, 'sim_score', e.target.value)} />
+                                            </div>
+                                            <div className="order-card-form-row">
+                                                <label>AI Score</label>
+                                                <label className="btn btn-outline upload-btn" style={{ cursor: 'pointer' }}>
+                                                    <Upload size={14} /> Upload
+                                                    <input type="file" style={{ display: 'none' }} accept=".pdf" onChange={(e) => handleEditChange(order.id, 'report2', e.target.files[0])} />
+                                                </label>
+                                                {edit.report2 && <CheckCircle size={16} className="uploaded-check" />}
+                                                <input type="number" placeholder="%" value={edit.ai_score !== undefined ? edit.ai_score : order.ai_score || ''} onChange={(e) => handleEditChange(order.id, 'ai_score', e.target.value)} />
+                                            </div>
+                                            {isDraft && (
+                                                <button className="btn btn-primary order-card-save" onClick={() => handleSave(order)}>
+                                                    <Save size={16} /> Save & Complete
+                                                </button>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        );
+                    })
+                )}
             </div>
         </div>
     );

@@ -1140,4 +1140,132 @@ ul {
     .sidebar-overlay {
         display: none;
     }
+
+    /* Hide mobile cards on desktop */
+    .mobile-order-cards {
+        display: none;
+    }
+}
+
+/* Mobile Order Cards */
+.mobile-order-cards {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    /* Hide table on mobile, show cards */
+    .admin-orders-table {
+        display: none;
+    }
+
+    .mobile-order-cards {
+        display: block;
+    }
+
+    .order-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+
+    .order-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .order-card-info h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+    }
+
+    .order-card-info .filename {
+        font-size: 0.875rem;
+        color: var(--text-color);
+        word-break: break-all;
+    }
+
+    .order-card-status {
+        flex-shrink: 0;
+    }
+
+    .order-card-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .order-card-actions .btn {
+        flex: 1;
+        padding: 10px 12px;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .order-card-form {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .order-card-form-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .order-card-form-row label {
+        flex: 1;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-color);
+    }
+
+    .order-card-form-row .upload-btn {
+        padding: 8px 12px;
+        font-size: 0.875rem;
+    }
+
+    .order-card-form-row input[type="number"] {
+        width: 70px;
+        padding: 8px;
+        font-size: 0.875rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+    }
+
+    .order-card-form-row .uploaded-check {
+        color: #16a34a;
+    }
+
+    .order-card-save {
+        width: 100%;
+        margin-top: 12px;
+        padding: 12px;
+        font-size: 1rem;
+    }
+
+    .order-card-done {
+        text-align: center;
+        color: #16a34a;
+        font-weight: 500;
+        padding: 8px 0;
+    }
+
+    .order-card-scores {
+        display: flex;
+        gap: 16px;
+        margin-top: 8px;
+        font-size: 0.875rem;
+        color: var(--text-color);
+    }
 }

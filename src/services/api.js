@@ -50,6 +50,10 @@ export const admin = {
     complete: (id, formData) => api.post(`/admin/complete/${id}`, formData),
     startProcessing: (id) => api.post(`/admin/processing/${id}`),
     verifyTransaction: (reference) => api.post(`/admin/transactions/${reference}/verify`),
+    // Notification endpoints
+    getVapidKey: () => api.get('/admin/vapid-public-key'),
+    subscribeNotifications: (subscription) => api.post('/admin/subscribe-notifications', { subscription }),
+    unsubscribeNotifications: () => api.post('/admin/unsubscribe-notifications'),
 };
 
 export const packages = {

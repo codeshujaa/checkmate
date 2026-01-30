@@ -15,11 +15,15 @@ import (
 )
 
 type PaymentHandler struct {
-	DB *gorm.DB
+	DB                  *gorm.DB
+	NotificationHandler *NotificationHandler
 }
 
-func NewPaymentHandler(db *gorm.DB) *PaymentHandler {
-	return &PaymentHandler{DB: db}
+func NewPaymentHandler(db *gorm.DB, notificationHandler *NotificationHandler) *PaymentHandler {
+	return &PaymentHandler{
+		DB:                  db,
+		NotificationHandler: notificationHandler,
+	}
 }
 
 // Paystack API Constants
@@ -161,6 +165,15 @@ func (h *PaymentHandler) InitiatePayment(c *gin.Context) {
 		return
 	}
 
+	// Send notification to admins
+	if h.NotificationHandler != nil {
+		go h.NotificationHandler.SendToAdmins(
+			"💰 New Payment Initiated",
+			fmt.Sprintf("%s %s initiated payment of KSH %.0f for %d slots", user.FirstName, user.LastName, amount, body.Slots),
+			"/dashboard/admin",
+		)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "M-Pesa prompt sent to your phone",
 		"reference": reference,
@@ -272,6 +285,17 @@ func (h *PaymentHandler) CheckPaymentStatus(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction processing failed"})
 			return
+		}
+
+		// Send notification to admins
+		if h.NotificationHandler != nil {
+			var user models.User
+			h.DB.First(&user, transaction.UserID)
+			go h.NotificationHandler.SendToAdmins(
+				"✅ Payment Completed",
+				fmt.Sprintf("%s %s paid KSH %.0f - %d slots added", user.FirstName, user.LastName, transaction.Amount, transaction.SlotsPurchased),
+				"/dashboard/admin",
+			)
 		}
 
 		c.JSON(http.StatusOK, gin.H{

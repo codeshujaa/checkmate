@@ -28,7 +28,7 @@ func main() {
 	}
 
 	// Migrate
-	db.AutoMigrate(&models.User{}, &models.Order{}, &models.UserCredits{}, &models.Transaction{}, &models.VerificationCode{}, &models.PasswordResetToken{}, &models.PricingPackage{})
+	db.AutoMigrate(&models.User{}, &models.Order{}, &models.UserCredits{}, &models.Transaction{}, &models.VerificationCode{}, &models.PasswordResetToken{}, &models.PricingPackage{}, &models.PushSubscription{})
 
 	// Seed Packages
 	var count int64
@@ -45,8 +45,9 @@ func main() {
 	// Handlers
 	authHandler := handlers.NewAuthHandler(db)
 	pkgHandler := handlers.NewPackageHandler(db)
-	orderHandler := handlers.NewOrderHandler(db)
-	paymentHandler := handlers.NewPaymentHandler(db)
+	notificationHandler := handlers.NewNotificationHandler(db)
+	paymentHandler := handlers.NewPaymentHandler(db, notificationHandler)
+	orderHandler := handlers.NewOrderHandler(db, notificationHandler)
 
 	// Start background cleanup job (delete orders older than 5 hours)
 	handlers.StartCleanupJob(db, 5)
@@ -121,6 +122,11 @@ func main() {
 			admin.POST("/packages", pkgHandler.AdminCreatePackage)
 			admin.PUT("/packages/:id", pkgHandler.AdminUpdatePackage)
 			admin.DELETE("/packages/:id", pkgHandler.AdminDeletePackage)
+
+			// Notifications
+			admin.GET("/vapid-public-key", notificationHandler.GetVAPIDPublicKey)
+			admin.POST("/subscribe-notifications", notificationHandler.Subscribe)
+			admin.POST("/unsubscribe-notifications", notificationHandler.Unsubscribe)
 		}
 	}
 

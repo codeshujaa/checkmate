@@ -112,3 +112,14 @@ type Transaction struct {
 
 	User User `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
+
+type PushSubscription struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"index" json:"user_id"`
+	Endpoint  string    `json:"endpoint"`
+	P256dh    string    `json:"p256dh"` // Encryption key
+	Auth      string    `json:"auth"`   // Auth secret
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+

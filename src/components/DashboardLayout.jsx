@@ -10,11 +10,10 @@ import {
     Menu,
     Package,
     X,
-    FileText,
-    Bell,
-    BellOff
+    FileText
 } from 'lucide-react';
 import { admin } from '../services/api';
+import NotificationToggle from './NotificationSetup';
 
 const SidebarItem = ({ icon: Icon, label, to, active, onClick }) => (
     <Link
@@ -35,20 +34,6 @@ const DashboardLayout = () => {
     // Check if current user is admin
     const [isAdmin, setIsAdmin] = useState(false);
 
-    // --- NOTIFICATION STATE (Global) ---
-    const [soundEnabled, setSoundEnabled] = useState(() => {
-        return localStorage.getItem('adminSoundEnabled') !== 'false';
-    });
-
-    // Audio ref
-    const audioRef = useRef(null);
-    // Tracking refs
-    const prevOrderCountRef = useRef(0);
-    const prevTransactionCountRef = useRef(0);
-    const knownOrderIdsRef = useRef(new Set());
-    const knownTransactionIdsRef = useRef(new Map()); // Changed from Set to Map
-    const isFirstRun = useRef(true);
-
     useEffect(() => {
         const userStr = localStorage.getItem('user');
         if (userStr) {
@@ -60,97 +45,6 @@ const DashboardLayout = () => {
             } catch (e) { }
         }
     }, []);
-
-    // Initialize Audio
-    useEffect(() => {
-        audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
-        audioRef.current.volume = 0.5;
-    }, []);
-
-    // Global Polling for Admins
-    useEffect(() => {
-        if (!isAdmin) return;
-
-        const checkNotifications = async () => {
-            try {
-                const [ordersRes, transRes] = await Promise.all([
-                    admin.list(),
-                    admin.transactions()
-                ]);
-
-                const currentOrders = ordersRes.data || [];
-                const currentTransactions = transRes.data || [];
-
-                let newOrdersFound = false;
-                let newPaymentFound = false;
-                let paymentDetails = "";
-
-                // 1. Check Orders
-                currentOrders.forEach(o => {
-                    if (!knownOrderIdsRef.current.has(o.id) && o.status === 'Pending') {
-                        if (!isFirstRun.current) newOrdersFound = true;
-                    }
-                    knownOrderIdsRef.current.add(o.id);
-                });
-
-                // 2. Check Transactions
-                currentTransactions.forEach(t => {
-                    const knownStatus = knownTransactionIdsRef.current.get(t.id);
-
-                    // Case A: New Transaction found that is already completed
-                    if (!knownStatus && t.status === 'completed') {
-                        if (!isFirstRun.current) {
-                            newPaymentFound = true;
-                            paymentDetails = `${t.amount} from ${t.user?.first_name || 'User'}`;
-                        }
-                    }
-
-                    // Case B: Existing Transaction changed status (e.g. pending -> completed)
-                    if (knownStatus && knownStatus !== 'completed' && t.status === 'completed') {
-                        newPaymentFound = true;
-                        paymentDetails = `${t.amount} from ${t.user?.first_name || 'User'}`;
-                    }
-
-                    // Update known map
-                    knownTransactionIdsRef.current.set(t.id, t.status);
-                });
-
-                // Trigger Alert (Skip on first load to prevent noise)
-                if ((newOrdersFound || newPaymentFound) && soundEnabled && !isFirstRun.current) {
-                    if (audioRef.current) {
-                        audioRef.current.play().catch(e => console.error("Sound blocked:", e));
-                    }
-                    // Optional: Native Notification
-                    if (Notification.permission === "granted") {
-                        if (newPaymentFound) new Notification("New Payment!", { body: paymentDetails });
-                        if (newOrdersFound) new Notification("New Upload!", { body: "New document waiting for review." });
-                    }
-                }
-
-                prevOrderCountRef.current = currentOrders.length;
-                prevTransactionCountRef.current = currentTransactions.length;
-                isFirstRun.current = false;
-
-            } catch (error) {
-                // Silently fail polling
-            }
-        };
-
-        // Request permission
-        if (Notification.permission !== "granted") Notification.requestPermission();
-
-        checkNotifications(); // Immediate check
-        const interval = setInterval(checkNotifications, 5000);
-        return () => clearInterval(interval);
-    }, [isAdmin, soundEnabled]);
-
-
-    const toggleSound = () => {
-        const newState = !soundEnabled;
-        setSoundEnabled(newState);
-        localStorage.setItem('adminSoundEnabled', newState);
-        if (!soundEnabled && audioRef.current) audioRef.current.play().catch(() => { });
-    };
 
     const handleSignOut = (e) => {
         e.preventDefault();
@@ -221,10 +115,7 @@ const DashboardLayout = () => {
 
                 <div className="sidebar-footer">
                     {isAdmin && (
-                        <button onClick={toggleSound} className="sidebar-item" style={{ marginBottom: '10px' }}>
-                            {soundEnabled ? <Bell size={20} color="#10b981" /> : <BellOff size={20} color="#94a3b8" />}
-                            <span>{soundEnabled ? "Sound On" : "Sound Off"}</span>
-                        </button>
+                        <NotificationToggle />
                     )}
                     <button onClick={handleSignOut} className="sidebar-item sign-out-btn">
                         <LogOut size={20} />

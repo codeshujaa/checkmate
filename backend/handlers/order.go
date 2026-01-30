@@ -15,11 +15,15 @@ import (
 )
 
 type OrderHandler struct {
-	DB *gorm.DB
+	DB                  *gorm.DB
+	NotificationHandler *NotificationHandler
 }
 
-func NewOrderHandler(db *gorm.DB) *OrderHandler {
-	return &OrderHandler{DB: db}
+func NewOrderHandler(db *gorm.DB, notificationHandler *NotificationHandler) *OrderHandler {
+	return &OrderHandler{
+		DB:                  db,
+		NotificationHandler: notificationHandler,
+	}
 }
 
 // Upload a file
@@ -75,8 +79,18 @@ func (h *OrderHandler) Upload(c *gin.Context) {
 	h.DB.Create(&order)
 
 	// Decrement counters
-
 	DecrementUserSlots(h.DB, userIDUint)
+
+	// Send notification to admins
+	if h.NotificationHandler != nil {
+		var user models.User
+		h.DB.First(&user, userIDUint)
+		go h.NotificationHandler.SendToAdmins(
+			"📄 New Document Uploaded",
+			fmt.Sprintf("%s %s uploaded \"%s\"", user.FirstName, user.LastName, file.Filename),
+			"/dashboard/admin/orders",
+		)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":         "File uploaded successfully",
